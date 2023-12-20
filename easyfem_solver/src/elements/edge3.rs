@@ -14,7 +14,7 @@ pub struct Edge3 {
 impl Edge3 {
     pub fn new(gauss_deg: usize) -> Self {
         Edge3 {
-            nodes_numbers: [0, 0, 0],
+            nodes_numbers: [0; 3],
             nodes_coordinates: Matrix3x1::<f64>::zeros(),
             gauss_matrix: get_gauss_1d_matrix(gauss_deg), // 高斯积分矩阵
             K: Matrix3::<f64>::zeros(),

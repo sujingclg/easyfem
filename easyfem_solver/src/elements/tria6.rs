@@ -1,0 +1,1 @@
+pub struct Tria6 {}

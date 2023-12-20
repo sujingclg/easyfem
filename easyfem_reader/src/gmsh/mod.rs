@@ -3,7 +3,7 @@
 use core::fmt;
 use std::{fs::File, io};
 
-use super::Mesh;
+use crate::Mesh;
 
 pub struct GmshReader {
     //
@@ -80,7 +80,7 @@ impl fmt::Display for GmshMesh {
 
 #[cfg(test)]
 mod tests {
-    use crate::base::utils::read_lines;
+    use crate::utils::read_lines;
 
     use super::GmshReader;
 

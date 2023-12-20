@@ -1,8 +1,8 @@
+use easyfem_reader::Mesh;
 use nalgebra::{DMatrix, DVector, MatrixXx3};
 
 use crate::{
     elements::{GeneralElement, StructureElement},
-    file_readers::Mesh,
     materials::Material,
 };
 
