@@ -114,7 +114,7 @@ mod tests {
     use super::{Structure2DSolver, StructureBoundaryCondition};
 
     #[test]
-    fn test_structure_2d_solver_1() {
+    fn structure_2d_solver_test_1() {
         let F = 1.0e5;
         let bcs = vec![
             StructureBoundaryCondition {

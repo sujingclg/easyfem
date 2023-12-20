@@ -74,19 +74,19 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_1d() {
+    fn gauss_1d_test() {
         let matrix = get_gauss_1d_matrix(2);
         println!("{}", matrix);
     }
 
     #[test]
-    fn test_2d() {
+    fn gauss_2d_test() {
         let matrix = get_gauss_2d_matrix(2);
         println!("{}", matrix);
     }
 
     #[test]
-    fn test_3d() {
+    fn gauss_3d_test() {
         let matrix = get_gauss_3d_matrix(2);
         println!("{}", matrix);
     }

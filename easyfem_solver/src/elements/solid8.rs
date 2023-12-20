@@ -216,7 +216,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_solid8_1() {
+    fn structure_test_1() {
         let n_dofs: usize = 24;
         let element_node_matrix = DMatrix::from_row_slice(1, 8, &[0, 1, 2, 3, 4, 5, 6, 7]);
         let node_coordinate_matrix = MatrixXx3::from_row_slice(&[

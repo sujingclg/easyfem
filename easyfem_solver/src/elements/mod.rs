@@ -29,7 +29,7 @@ pub trait GeneralElement {
 }
 
 /// 用于力学结构计算的单元
-/// N 为材料本构矩阵的阶数, 一维N=1, 二维N=3, 三维N=6
-pub trait StructureElement<const N: usize> {
-    fn structure_calculate(&mut self, mat: &impl Material<N>);
+/// O(Order)为材料本构矩阵的阶数, 一维O=1, 二维O=3, 三维O=6
+pub trait StructureElement<const O: usize> {
+    fn structure_calculate(&mut self, mat: &impl Material<O>);
 }

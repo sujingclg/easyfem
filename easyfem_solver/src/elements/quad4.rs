@@ -139,7 +139,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_quad4_1() {
+    fn structure_test_1() {
         let n_dofs: usize = 8;
         let element_node_matrix = DMatrix::from_row_slice(1, 4, &[0, 1, 2, 3]);
         let node_coordinate_matrix = MatrixXx3::from_row_slice(&[

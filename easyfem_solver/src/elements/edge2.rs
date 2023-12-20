@@ -111,7 +111,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn edge2_test_1() {
+    fn structure_test_1() {
         let element_node_matrix = DMatrix::from_row_slice(5, 2, &[0, 1, 1, 2, 2, 3, 3, 4, 4, 5]);
         // println!("{}", element_node_matrix);
         let node_coordinate_matrix = MatrixXx3::from_row_slice(&[
@@ -136,5 +136,10 @@ mod tests {
             edge2.assemble(&mut stiffness_matrix);
         }
         println!("{:.3e}", stiffness_matrix);
+    }
+
+    #[test]
+    fn poisson_test_1() {
+        //
     }
 }

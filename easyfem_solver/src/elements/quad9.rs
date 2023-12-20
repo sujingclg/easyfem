@@ -80,6 +80,7 @@ impl Quad9 {
 }
 
 impl GeneralElement for Quad9 {
+    // TODO: 代码重复，考虑合并
     fn update(
         &mut self,
         element_number: usize,                   // 单元编号, 即单元的全局索引
@@ -104,6 +105,7 @@ impl GeneralElement for Quad9 {
     }
 
     fn assemble(&mut self, stiffness_matrix: &mut DMatrix<f64>) {
+        // TODO: 代码重复，考虑合并
         for (i, node_i) in self.nodes_numbers.iter().enumerate() {
             for (j, node_j) in self.nodes_numbers.iter().enumerate() {
                 // println!("i = {i}, node_i = {node_i}, j = {j}, node_j = {node_j}");
@@ -163,7 +165,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_quad9_1() {
+    fn structure_test_1() {
         let n_dofs: usize = 18;
         let element_node_matrix = DMatrix::from_row_slice(1, 9, &[0, 1, 2, 3, 4, 5, 6, 7, 8]);
         let node_coordinate_matrix = MatrixXx3::from_row_slice(&[

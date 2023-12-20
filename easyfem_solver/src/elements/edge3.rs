@@ -114,7 +114,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn edge3_test_1() {
+    fn structure_test_1() {
         let element_node_matrix = DMatrix::from_row_slice(2, 3, &[0, 1, 2, 1, 2, 3]);
         let node_coordinate_matrix = MatrixXx3::from_row_slice(&[
             0.0, 0.0, 0.0, // 0
