@@ -15,9 +15,9 @@ impl Edge3 {
     pub fn new(gauss_deg: usize) -> Self {
         Edge3 {
             nodes_numbers: [0; 3],
-            nodes_coordinates: Matrix3x1::<f64>::zeros(),
+            nodes_coordinates: Matrix3x1::zeros(),
             gauss_matrix: get_gauss_1d_matrix(gauss_deg), // 高斯积分矩阵
-            K: Matrix3::<f64>::zeros(),
+            K: Matrix3::zeros(),
         }
     }
 
@@ -125,7 +125,7 @@ mod tests {
             0.75, 0.0, 0.0, // 5
         ]);
         let mut edge3 = Edge3::new(2);
-        let mut stiffness_matrix = DMatrix::<f64>::zeros(4, 4);
+        let mut stiffness_matrix = DMatrix::zeros(4, 4);
         let mat = IsotropicLinearElastic1D::new(1.0, 1.0);
         for element_number in 0..element_node_matrix.nrows() {
             edge3.update(

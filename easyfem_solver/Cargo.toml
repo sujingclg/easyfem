@@ -8,4 +8,4 @@ edition = "2021"
 [dependencies]
 gauss-quad = "0.1.8"
 nalgebra = "0.32.3"
-easyfem_reader = { path = "../easyfem_reader" }
+easyfem_mesh = { path = "../easyfem_mesh" }

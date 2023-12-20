@@ -9,6 +9,7 @@ pub struct Edge2 {
     nodes_coordinates: Matrix2x1<f64>, // 单元节点的全局坐标数组, 每单元2节点, 每节点1坐标
     gauss_matrix: MatrixXx2<f64>,      // 高斯积分矩阵, 1列->w 2列->xi
     K: Matrix2<f64>,                   // 单元刚度矩阵
+                                       // F: Vector2<f64>,
 }
 
 impl Edge2 {
@@ -16,9 +17,10 @@ impl Edge2 {
     ) -> Self {
         Edge2 {
             nodes_numbers: [0, 0],
-            nodes_coordinates: Matrix2x1::<f64>::zeros(),
+            nodes_coordinates: Matrix2x1::zeros(),
             gauss_matrix: get_gauss_1d_matrix(gauss_deg),
-            K: Matrix2::<f64>::zeros(),
+            K: Matrix2::zeros(),
+            // F: Vector2::zeros(),
         }
     }
 
@@ -48,6 +50,18 @@ impl Edge2 {
 
         (shape_function_values, gradient_matrix, det_J)
     }
+
+    // pub fn general_calculate<K, F>(
+    //     &mut self,
+    //     F: &mut DVector<f64>,
+    //     //  operator_K: K,
+    //     operator_F: F,
+    // ) where
+    //     // K: Fn(f64) -> f64,
+    //     F: Fn(usize, usize, &Vector2<f64>, &Matrix2x1<f64>) -> f64, // 输入分别为第i个节点的shape_function_value,
+    // {
+    //     //
+    // }
 }
 
 impl GeneralElement for Edge2 {
@@ -123,7 +137,7 @@ mod tests {
             1.0, 0.0, 0.0, // 5
         ]);
         let mut edge2 = Edge2::new(2);
-        let mut stiffness_matrix = DMatrix::<f64>::zeros(6, 6);
+        let mut stiffness_matrix = DMatrix::zeros(6, 6);
         // let D = Matrix1::new(1.0e9);
         let mat = IsotropicLinearElastic1D::new(1.0e9, 1.0);
         for element_number in 0..element_node_matrix.nrows() {

@@ -18,9 +18,9 @@ impl Solid8 {
     pub fn new(gauss_deg: usize) -> Self {
         Solid8 {
             nodes_numbers: [0, 0, 0, 0, 0, 0, 0, 0],
-            nodes_coordinates: Matrix8x3::<f64>::zeros(),
+            nodes_coordinates: Matrix8x3::zeros(),
             gauss_matrix: get_gauss_3d_matrix(gauss_deg),
-            K: Matrix24::<f64>::zeros(),
+            K: Matrix24::zeros(),
         }
     }
 
@@ -161,8 +161,8 @@ impl GeneralElement for Solid8 {
 
 impl StructureElement<6> for Solid8 {
     fn structure_calculate(&mut self, mat: &impl Material<6>) {
-        let mut B = Matrix6x3::<f64>::zeros(); // 应变矩阵
-        let mut Bt = Matrix3x6::<f64>::zeros(); // 应变矩阵的转置
+        let mut B = Matrix6x3::zeros(); // 应变矩阵
+        let mut Bt = Matrix3x6::zeros(); // 应变矩阵的转置
         for row in self.gauss_matrix.row_iter() {
             let xi = row[1];
             let eta = row[2];
@@ -231,7 +231,7 @@ mod tests {
         ]);
         let mut solid8 = Solid8::new(2);
         let mat = IsotropicLinearElastic3D::new(1.0e10, 0.25);
-        let mut stiffness_matrix = DMatrix::<f64>::zeros(n_dofs, n_dofs);
+        let mut stiffness_matrix = DMatrix::zeros(n_dofs, n_dofs);
         for element_number in 0..element_node_matrix.nrows() {
             solid8.update(
                 element_number,

@@ -150,7 +150,7 @@ mod tests {
         ]);
         let mut quad4 = Quad4::new(2);
         let mat = IsotropicLinearElastic2D::new(3.0e7, 0.25, PlaneCondition::PlaneStress, 1.0);
-        let mut stiffness_matrix = DMatrix::<f64>::zeros(n_dofs, n_dofs);
+        let mut stiffness_matrix = DMatrix::zeros(n_dofs, n_dofs);
         for element_number in 0..element_node_matrix.nrows() {
             quad4.update(
                 element_number,

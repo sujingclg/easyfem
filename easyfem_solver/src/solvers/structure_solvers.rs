@@ -1,4 +1,4 @@
-use easyfem_reader::Mesh;
+use easyfem_mesh::Mesh;
 use nalgebra::{DMatrix, DVector, MatrixXx3};
 
 use crate::{

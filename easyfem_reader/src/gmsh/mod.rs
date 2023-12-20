@@ -3,7 +3,7 @@
 use core::fmt;
 use std::{fs::File, io};
 
-use crate::Mesh;
+use easyfem_mesh::Mesh;
 
 pub struct GmshReader {
     //
