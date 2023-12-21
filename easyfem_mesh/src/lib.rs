@@ -1,4 +1,13 @@
+mod lagrange_1d_mesh;
+pub use lagrange_1d_mesh::Lagrange1DMesh;
+
 pub trait Mesh {
+    fn get_nodes(&self);
+    fn get_elements(&self);
+}
+
+/// DOF -> degree 节点自由度
+pub trait Mesh2<const DOF: usize> {
     fn get_nodes(&self);
     fn get_elements(&self);
 }

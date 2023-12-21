@@ -5,18 +5,17 @@ use crate::{base::gauss::get_gauss_1d_matrix, materials::Material};
 use super::{GeneralElement, StructureElement};
 
 pub struct Edge2 {
-    nodes_numbers: [usize; 2],         // 单元的节点序号数组
+    connectivity: [usize; 2],          // 单元的节点序号数组
     nodes_coordinates: Matrix2x1<f64>, // 单元节点的全局坐标数组, 每单元2节点, 每节点1坐标
     gauss_matrix: MatrixXx2<f64>,      // 高斯积分矩阵, 1列->w 2列->xi
     K: Matrix2<f64>,                   // 单元刚度矩阵
-                                       // F: Vector2<f64>,
 }
 
 impl Edge2 {
     pub fn new(gauss_deg: usize, // 高斯积分阶数
     ) -> Self {
         Edge2 {
-            nodes_numbers: [0, 0],
+            connectivity: [0, 0],
             nodes_coordinates: Matrix2x1::zeros(),
             gauss_matrix: get_gauss_1d_matrix(gauss_deg),
             K: Matrix2::zeros(),
@@ -40,7 +39,7 @@ impl Edge2 {
         let mut dx_dxi = 0.0;
 
         // 遍历单元的每个节点
-        for i in 0..self.nodes_numbers.len() {
+        for i in 0..self.connectivity.len() {
             dx_dxi += gradient_matrix[i] * self.nodes_coordinates[i];
         }
         // let det_jacob = f64::abs(dx_dxi);
@@ -50,18 +49,6 @@ impl Edge2 {
 
         (shape_function_values, gradient_matrix, det_J)
     }
-
-    // pub fn general_calculate<K, F>(
-    //     &mut self,
-    //     F: &mut DVector<f64>,
-    //     //  operator_K: K,
-    //     operator_F: F,
-    // ) where
-    //     // K: Fn(f64) -> f64,
-    //     F: Fn(usize, usize, &Vector2<f64>, &Matrix2x1<f64>) -> f64, // 输入分别为第i个节点的shape_function_value,
-    // {
-    //     //
-    // }
 }
 
 impl GeneralElement for Edge2 {
@@ -76,10 +63,10 @@ impl GeneralElement for Edge2 {
             .iter()
             .enumerate()
             .for_each(|(idx, node_idx)| {
-                self.nodes_numbers[idx] = *node_idx;
+                self.connectivity[idx] = *node_idx;
             });
 
-        self.nodes_numbers
+        self.connectivity
             .iter()
             .enumerate()
             .for_each(|(idx, node_idx)| {
@@ -89,8 +76,8 @@ impl GeneralElement for Edge2 {
     }
 
     fn assemble(&mut self, stiffness_matrix: &mut DMatrix<f64>) {
-        for (i, node_i) in self.nodes_numbers.iter().enumerate() {
-            for (j, node_j) in self.nodes_numbers.iter().enumerate() {
+        for (i, node_i) in self.connectivity.iter().enumerate() {
+            for (j, node_j) in self.connectivity.iter().enumerate() {
                 stiffness_matrix[(*node_i, *node_j)] += self.K[(i, j)];
             }
         }
@@ -105,8 +92,8 @@ impl StructureElement<1> for Edge2 {
             let w = row[0];
             let (_, gradient_matrix, det_J) = self.gauss_point_calculate(xi);
             let JxW = det_J * w;
-            for i in 0..self.nodes_numbers.len() {
-                for j in 0..self.nodes_numbers.len() {
+            for i in 0..self.connectivity.len() {
+                for j in 0..self.connectivity.len() {
                     // 这里要对高斯积分进行累加
                     self.K[(i, j)] += gradient_matrix[j]
                         * gradient_matrix[i]
@@ -120,32 +107,20 @@ impl StructureElement<1> for Edge2 {
 
 #[cfg(test)]
 mod tests {
+    use easyfem_mesh::Lagrange1DMesh;
+
     use crate::materials::IsotropicLinearElastic1D;
 
     use super::*;
 
     #[test]
     fn structure_test_1() {
-        let element_node_matrix = DMatrix::from_row_slice(5, 2, &[0, 1, 1, 2, 2, 3, 3, 4, 4, 5]);
-        // println!("{}", element_node_matrix);
-        let node_coordinate_matrix = MatrixXx3::from_row_slice(&[
-            0.0, 0.0, 0.0, // 0
-            0.2, 0.0, 0.0, // 1
-            0.4, 0.0, 0.0, // 2
-            0.6, 0.0, 0.0, // 3
-            0.8, 0.0, 0.0, // 4
-            1.0, 0.0, 0.0, // 5
-        ]);
+        let mesh = Lagrange1DMesh::new(0.0, 1.0, 5, "edge2");
         let mut edge2 = Edge2::new(2);
         let mut stiffness_matrix = DMatrix::zeros(6, 6);
-        // let D = Matrix1::new(1.0e9);
         let mat = IsotropicLinearElastic1D::new(1.0e9, 1.0);
-        for element_number in 0..element_node_matrix.nrows() {
-            edge2.update(
-                element_number,
-                &element_node_matrix,
-                &node_coordinate_matrix,
-            );
+        for element_number in 0..mesh.get_element_count() {
+            edge2.update(element_number, mesh.get_elements(), mesh.get_nodes());
             edge2.structure_calculate(&mat);
             edge2.assemble(&mut stiffness_matrix);
         }
