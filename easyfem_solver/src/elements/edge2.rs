@@ -107,7 +107,7 @@ impl StructureElement<1> for Edge2 {
 
 #[cfg(test)]
 mod tests {
-    use easyfem_mesh::Lagrange1DMesh;
+    use easyfem_mesh::{Lagrange1DMesh, Mesh};
 
     use crate::materials::IsotropicLinearElastic1D;
 

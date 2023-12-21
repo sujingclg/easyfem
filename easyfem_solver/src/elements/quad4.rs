@@ -134,6 +134,8 @@ impl StructureElement<3> for Quad4 {
 
 #[cfg(test)]
 mod tests {
+    use easyfem_mesh::{Lagrange2DMesh, Mesh};
+
     use crate::materials::{IsotropicLinearElastic2D, PlaneCondition};
 
     use super::*;
@@ -157,6 +159,22 @@ mod tests {
                 &element_node_matrix,
                 &node_coordinate_matrix,
             );
+            quad4.structure_calculate(&mat);
+            quad4.assemble(&mut stiffness_matrix);
+        }
+        println!("stiffness_matrix = {:.3e}", stiffness_matrix);
+    }
+
+    #[test]
+    fn structure_test_2() {
+        let n_dofs: usize = 8;
+        let mesh = Lagrange2DMesh::new(3.0, 5.0, 1, 2.0, 4.0, 1, "quad4");
+        println!("{}", mesh);
+        let mut quad4 = Quad4::new(2);
+        let mat = IsotropicLinearElastic2D::new(3.0e7, 0.25, PlaneCondition::PlaneStress, 1.0);
+        let mut stiffness_matrix = DMatrix::zeros(n_dofs, n_dofs);
+        for element_number in 0..mesh.get_element_count() {
+            quad4.update(element_number, mesh.get_elements(), mesh.get_nodes());
             quad4.structure_calculate(&mat);
             quad4.assemble(&mut stiffness_matrix);
         }

@@ -3,8 +3,6 @@
 use core::fmt;
 use std::{fs::File, io};
 
-use easyfem_mesh::Mesh;
-
 pub struct GmshReader {
     //
 }
@@ -30,7 +28,7 @@ impl GmshReader {
         if let Some(Ok(line)) = lines_iter.next() {
             let s: Vec<&str> = line.trim().split_whitespace().collect();
             println!("{:?}", s);
-            println!("{:?}", mesh.get_nodes());
+            // println!("{:?}", mesh.get_nodes());
             // mesh.set_version(float(s[0]));
             // mesh.set_ascii(int(s[1]) == 0);
             // mesh.set_precision(int(s[2]));
@@ -62,15 +60,15 @@ impl GmshMesh {
     }
 }
 
-impl Mesh for GmshMesh {
-    fn get_nodes(&self) {
-        //
-    }
+// impl Mesh for GmshMesh {
+//     fn get_nodes(&self) {
+//         //
+//     }
 
-    fn get_elements(&self) {
-        //
-    }
-}
+//     fn get_elements(&self) {
+//         //
+//     }
+// }
 
 impl fmt::Display for GmshMesh {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

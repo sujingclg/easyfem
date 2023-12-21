@@ -1,4 +1,4 @@
-use easyfem_mesh::Mesh;
+// use easyfem_mesh::Mesh;
 use nalgebra::{DMatrix, DVector, MatrixXx3};
 
 use crate::{
@@ -92,18 +92,19 @@ impl Structure2DSolver {
     }
 }
 
-struct Structure3DSolver<'a> {
-    mesh: &'a dyn Mesh,
-}
+// struct Structure3DSolver<'a> {
+//     mesh: &'a dyn Mesh,
+// }
 
-impl<'a> Structure3DSolver<'a> {
-    pub fn new(mesh: &'a dyn Mesh) -> Self {
-        Structure3DSolver { mesh }
-    }
-}
+// impl<'a> Structure3DSolver<'a> {
+//     pub fn new(mesh: &'a dyn Mesh) -> Self {
+//         Structure3DSolver { mesh }
+//     }
+// }
 
 #[cfg(test)]
 mod tests {
+    use easyfem_mesh::{Lagrange2DMesh, Mesh};
     use nalgebra::{DMatrix, MatrixXx3};
 
     use crate::{
@@ -166,6 +167,41 @@ mod tests {
             &mat,
         );
         solver.display_stiffness_matrix();
+        solver.apply_boundary_conditions(&bcs);
+        solver.solve();
+        solver.display_displacement_vector();
+    }
+
+    #[test]
+    fn structure_2d_solver_test_2() {
+        let F = 1.0e5;
+        let mesh = Lagrange2DMesh::new(0.0, 2.0, 2, 0.0, 1.0, 1, "quad4");
+        println!("{}", mesh);
+        let mut bcs = vec![];
+        if let Some(leftnodes) = mesh.get_boundary_node_ids().get("left") {
+            leftnodes.iter().for_each(|id| {
+                bcs.push(StructureBoundaryCondition {
+                    node_id: *id,
+                    boundary_condition: [0.0, 0.0],
+                    is_force: false,
+                })
+            })
+        }
+        if let Some(leftnodes) = mesh.get_boundary_node_ids().get("right") {
+            leftnodes.iter().for_each(|id| {
+                bcs.push(StructureBoundaryCondition {
+                    node_id: *id,
+                    boundary_condition: [0.0, -F / 2.0],
+                    is_force: true,
+                })
+            })
+        }
+
+        let mut solver = Structure2DSolver::new(12);
+        let mut quad4 = Quad4::new(2);
+        let mat = IsotropicLinearElastic2D::new(1.0e7, 1.0 / 3.0, PlaneCondition::PlaneStress, 0.1);
+        solver.stiffness_calculate(mesh.get_elements(), mesh.get_nodes(), &mut quad4, &mat);
+        // solver.display_stiffness_matrix();
         solver.apply_boundary_conditions(&bcs);
         solver.solve();
         solver.display_displacement_vector();

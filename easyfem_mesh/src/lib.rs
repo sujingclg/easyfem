@@ -1,9 +1,16 @@
 mod lagrange_1d_mesh;
 pub use lagrange_1d_mesh::Lagrange1DMesh;
 
+mod lagrange_2d_mesh;
+pub use lagrange_2d_mesh::Lagrange2DMesh;
+use nalgebra::{DMatrix, MatrixXx3};
+
 pub trait Mesh {
-    fn get_nodes(&self);
-    fn get_elements(&self);
+    fn get_elements(&self) -> &DMatrix<usize>;
+
+    fn get_nodes(&self) -> &MatrixXx3<f64>;
+
+    fn get_element_count(&self) -> usize;
 }
 
 /// DOF -> degree 节点自由度

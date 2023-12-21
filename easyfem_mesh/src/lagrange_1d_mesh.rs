@@ -2,6 +2,8 @@ use std::usize;
 
 use nalgebra::{DMatrix, MatrixXx3};
 
+use crate::Mesh;
+
 pub struct Lagrange1DMesh {
     element_connectivity_matrix: DMatrix<usize>, // 单元节点矩阵
     node_coordinate_matrix: MatrixXx3<f64>,      // 节点坐标矩阵
@@ -39,16 +41,18 @@ impl Lagrange1DMesh {
             node_coordinate_matrix,
         }
     }
+}
 
-    pub fn get_elements(&self) -> &DMatrix<usize> {
+impl Mesh for Lagrange1DMesh {
+    fn get_elements(&self) -> &DMatrix<usize> {
         &self.element_connectivity_matrix
     }
 
-    pub fn get_nodes(&self) -> &MatrixXx3<f64> {
+    fn get_nodes(&self) -> &MatrixXx3<f64> {
         &self.node_coordinate_matrix
     }
 
-    pub fn get_element_count(&self) -> usize {
+    fn get_element_count(&self) -> usize {
         self.element_connectivity_matrix.nrows()
     }
 }
