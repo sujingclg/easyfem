@@ -39,14 +39,14 @@ impl Structure2DSolver {
         &mut self,
         element_node_matrix: &DMatrix<usize>,    // 单元节点矩阵
         node_coordinate_matrix: &MatrixXx3<f64>, // 节点坐标矩阵
-        element: &mut (impl GeneralElement + StructureElement<3>),
+        element: &mut (impl GeneralElement<4, 2> + StructureElement<3>),
         // materialsMap: &HashMap<usize, Box<dyn Material<3>>>,
         mat: &impl Material<3>,
     ) {
         for element_number in 0..element_node_matrix.nrows() {
             element.update(element_number, element_node_matrix, node_coordinate_matrix);
-            element.structure_calculate(mat);
-            element.assemble(&mut self.stiffness_matrix);
+            element.structure_stiffness_calculate(mat);
+            element.structure_assemble(&mut self.stiffness_matrix);
         }
     }
 
@@ -84,12 +84,6 @@ impl Structure2DSolver {
     pub fn display_stiffness_matrix(&self) {
         println!("{:.3e}", self.stiffness_matrix);
     }
-
-    pub fn display_displacement_vector(&self) {
-        if let Some(d) = &self.displacement_vector {
-            println!("{:.3e}", d);
-        }
-    }
 }
 
 // struct Structure3DSolver<'a> {
@@ -105,6 +99,7 @@ impl Structure2DSolver {
 #[cfg(test)]
 mod tests {
     use easyfem_mesh::{Lagrange2DMesh, Mesh};
+    use nalgebra::SMatrix;
 
     use crate::{
         elements::Quad4,
@@ -138,14 +133,20 @@ mod tests {
                 })
             })
         }
-
         let mut solver = Structure2DSolver::new(12);
-        let mut quad4 = Quad4::new(2);
+        let mut quad4 = Quad4::new(2, 2);
         let mat = IsotropicLinearElastic2D::new(1.0e7, 1.0 / 3.0, PlaneCondition::PlaneStress, 0.1);
         solver.stiffness_calculate(mesh.get_elements(), mesh.get_nodes(), &mut quad4, &mat);
-        // solver.display_stiffness_matrix();
         solver.apply_boundary_conditions(&bcs);
         solver.solve();
-        solver.display_displacement_vector();
+        let answer = SMatrix::<f64, 12, 1>::from_row_slice(&[
+            -4.000e-21, -1.000e-21, -6.000e-1, -8.667e-1, -8.000e-1, -2.533e0, 4.000e-21,
+            -1.000e-21, 6.000e-1, -8.667e-1, 8.000e-1, -2.533e0,
+        ]);
+        let err = 1e-3;
+        if let Some(d) = solver.displacement_vector {
+            println!("{:.3e}", &d);
+            assert!(d.relative_eq(&answer, err, err));
+        }
     }
 }

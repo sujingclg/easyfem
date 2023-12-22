@@ -1,33 +1,38 @@
-use nalgebra::{DMatrix, Matrix2x3, Matrix3x2, MatrixXx3, SMatrix};
+use std::ops::AddAssign;
 
-use crate::{base::gauss::get_gauss_2d_matrix, materials::Material};
+use nalgebra::{DMatrix, DVector, Matrix2x3, Matrix3x2, MatrixXx3, SMatrix};
 
-use super::{GeneralElement, StructureElement};
+use crate::{
+    base::{gauss::get_gauss_2d_matrix, utils::flatten_vector},
+    materials::Material,
+};
+
+use super::{GaussResult, GeneralElement, StructureElement};
 
 pub struct Quad9 {
+    node_dof: usize,                       // 节点自由度 结构分析为2
     connectivity: [usize; 9],              // 单元的节点序号数组
     nodes_coordinates: SMatrix<f64, 9, 2>, // 单元节点的全局坐标数组, 每单元9节点, 每节点2坐标
     gauss_matrix: MatrixXx3<f64>,          // 高斯积分矩阵, 1列->w 2列->xi 3列->eta
-    K: SMatrix<f64, 18, 18>,               // 单元刚度矩阵
+    K: DMatrix<f64>,                       // 单元刚度矩阵
+    F: DVector<f64>,                       // 右端向量
 }
 
 impl Quad9 {
-    pub fn new(gauss_deg: usize) -> Self {
+    pub fn new(gauss_deg: usize, node_dof: usize) -> Self {
         Quad9 {
+            node_dof,
             connectivity: [0; 9],
             nodes_coordinates: SMatrix::zeros(),
             gauss_matrix: get_gauss_2d_matrix(gauss_deg),
-            K: SMatrix::zeros(),
+            K: DMatrix::zeros(9 * node_dof, 9 * node_dof),
+            F: DVector::zeros(9 * node_dof),
         }
     }
 
-    fn gauss_point_calculate(
-        &self,
-        xi: f64,
-        eta: f64,
-    ) -> (SMatrix<f64, 9, 1>, SMatrix<f64, 9, 2>, f64) {
+    fn gauss_point_calculate(&self, xi: f64, eta: f64) -> GaussResult<9, 2> {
         // 2维9节点等参元形函数
-        let shape_function_matrix = SMatrix::from_column_slice(&[
+        let shape_function_values = SMatrix::from_column_slice(&[
             (xi * xi - xi) * (eta * eta - eta) / 4.0,  // N1
             (xi * xi + xi) * (eta * eta - eta) / 4.0,  // N2
             (xi * xi + xi) * (eta * eta + eta) / 4.0,  // N3
@@ -75,12 +80,15 @@ impl Quad9 {
 
         gradient_matrix = gradient_matrix * inverse_J.transpose();
 
-        (shape_function_matrix, gradient_matrix, det_J)
+        GaussResult {
+            shape_function_values,
+            gradient_matrix,
+            det_J,
+        }
     }
 }
 
-impl GeneralElement for Quad9 {
-    // TODO: 代码重复，考虑合并
+impl GeneralElement<9, 2> for Quad9 {
     fn update(
         &mut self,
         element_number: usize,                   // 单元编号, 即单元的全局索引
@@ -104,34 +112,70 @@ impl GeneralElement for Quad9 {
             });
     }
 
-    fn assemble(&mut self, stiffness_matrix: &mut DMatrix<f64>) {
-        // TODO: 代码重复，考虑合并
-        for (i, node_i) in self.connectivity.iter().enumerate() {
-            for (j, node_j) in self.connectivity.iter().enumerate() {
-                // println!("i = {i}, node_i = {node_i}, j = {j}, node_j = {node_j}");
-                stiffness_matrix[(2 * node_i + 0, 2 * node_j + 0)] +=
-                    self.K[(2 * i + 0, 2 * j + 0)];
-                stiffness_matrix[(2 * node_i + 0, 2 * node_j + 1)] +=
-                    self.K[(2 * i + 0, 2 * j + 1)];
-                stiffness_matrix[(2 * node_i + 1, 2 * node_j + 0)] +=
-                    self.K[(2 * i + 1, 2 * j + 0)];
-                stiffness_matrix[(2 * node_i + 1, 2 * node_j + 1)] +=
-                    self.K[(2 * i + 1, 2 * j + 1)];
+    fn general_stiffness_calculate<K, F>(&mut self, kij_operator: K, fi_operator: F)
+    where
+        K: Fn(usize, usize, &GaussResult<9, 2>) -> DMatrix<f64>,
+        F: Fn(usize, &GaussResult<9, 2>) -> DVector<f64>,
+    {
+        for row in self.gauss_matrix.row_iter() {
+            let xi = row[1];
+            let eta = row[2];
+            let w = row[0];
+            let gauss_result = self.gauss_point_calculate(xi, eta);
+            let JxW = gauss_result.det_J * w;
+            for i in 0..self.connectivity.len() {
+                let fi = fi_operator(i, &gauss_result) * JxW;
+                if fi.shape() != (self.node_dof, 1) {
+                    // TODO: 尝试用范型处理
+                    panic!("Shape of fi not match")
+                }
+                self.F
+                    .rows_mut(i * self.node_dof, self.node_dof)
+                    .add_assign(&fi);
+                for j in 0..self.connectivity.len() {
+                    let kij = kij_operator(i, j, &gauss_result) * JxW;
+                    if kij.shape() != (self.node_dof, self.node_dof) {
+                        // TODO: 尝试用范型处理
+                        panic!("Shape of kij not match")
+                    }
+                    self.K
+                        .view_mut((i, j), (self.node_dof, self.node_dof))
+                        .add_assign(&kij);
+                }
+            }
+        }
+    }
+
+    fn general_assemble(
+        &mut self,
+        stiffness_matrix: &mut DMatrix<f64>,
+        right_vector: &mut DVector<f64>,
+    ) {
+        let flattened_connectivity = flatten_vector(&self.connectivity, self.node_dof);
+        for (i, node_i) in flattened_connectivity.iter().enumerate() {
+            right_vector[*node_i] += self.F[i];
+            for (j, node_j) in flattened_connectivity.iter().enumerate() {
+                stiffness_matrix[(*node_i, *node_j)] += self.K[(i, j)];
             }
         }
         self.K.fill(0.0);
+        self.F.fill(0.0);
     }
 }
 
 impl StructureElement<3> for Quad9 {
-    fn structure_calculate(&mut self, mat: &impl Material<3>) {
+    fn structure_stiffness_calculate(&mut self, mat: &impl Material<3>) {
         let mut B = Matrix3x2::zeros(); // 应变矩阵
         let mut Bt = Matrix2x3::zeros(); // 应变矩阵的转置
         for row in self.gauss_matrix.row_iter() {
             let xi = row[1];
             let eta = row[2];
             let w = row[0];
-            let (_, gradient_matrix, det_J) = self.gauss_point_calculate(xi, eta);
+            let GaussResult {
+                gradient_matrix,
+                det_J,
+                ..
+            } = self.gauss_point_calculate(xi, eta);
             let JxW = det_J * w;
             for i in 0..self.connectivity.len() {
                 B[(0, 0)] = gradient_matrix[(i, 0)]; // 矩阵分块乘法, 每次计算出2x2的矩阵, 然后组装到单元刚度矩阵的对应位置
@@ -153,6 +197,23 @@ impl StructureElement<3> for Quad9 {
                 }
             }
         }
+    }
+
+    fn structure_assemble(&mut self, stiffness_matrix: &mut DMatrix<f64>) {
+        // TODO: 代码重复，考虑合并
+        for (i, node_i) in self.connectivity.iter().enumerate() {
+            for (j, node_j) in self.connectivity.iter().enumerate() {
+                stiffness_matrix[(2 * node_i + 0, 2 * node_j + 0)] +=
+                    self.K[(2 * i + 0, 2 * j + 0)];
+                stiffness_matrix[(2 * node_i + 0, 2 * node_j + 1)] +=
+                    self.K[(2 * i + 0, 2 * j + 1)];
+                stiffness_matrix[(2 * node_i + 1, 2 * node_j + 0)] +=
+                    self.K[(2 * i + 1, 2 * j + 0)];
+                stiffness_matrix[(2 * node_i + 1, 2 * node_j + 1)] +=
+                    self.K[(2 * i + 1, 2 * j + 1)];
+            }
+        }
+        self.K.fill(0.0);
     }
 }
 
@@ -179,7 +240,7 @@ mod tests {
             3.0, 3.0, 0.0, // 7
             4.0, 3.0, 0.0, // 8
         ]);
-        let mut quad4 = Quad9::new(2);
+        let mut quad4 = Quad9::new(2, 2);
         let mat = IsotropicLinearElastic2D::new(3.0e7, 0.25, PlaneCondition::PlaneStress, 1.0);
         let mut stiffness_matrix = DMatrix::zeros(n_dofs, n_dofs);
         for element_number in 0..element_node_matrix.nrows() {
@@ -188,8 +249,8 @@ mod tests {
                 &element_node_matrix,
                 &node_coordinate_matrix,
             );
-            quad4.structure_calculate(&mat);
-            quad4.assemble(&mut stiffness_matrix);
+            quad4.structure_stiffness_calculate(&mat);
+            quad4.structure_assemble(&mut stiffness_matrix);
         }
         println!("stiffness_matrix = {:.3e}", stiffness_matrix);
     }

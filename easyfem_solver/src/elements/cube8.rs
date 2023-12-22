@@ -1,36 +1,37 @@
-use nalgebra::{DMatrix, Matrix3x6, Matrix6x3, MatrixXx3, MatrixXx4, SMatrix};
+use std::ops::AddAssign;
 
-use crate::{base::gauss::get_gauss_3d_matrix, materials::Material};
+use nalgebra::{DMatrix, DVector, Matrix3x6, Matrix6x3, MatrixXx3, MatrixXx4, SMatrix};
 
-use super::{GeneralElement, StructureElement};
+use crate::{
+    base::{gauss::get_gauss_3d_matrix, utils::flatten_vector},
+    materials::Material,
+};
 
-type Matrix24<T> = SMatrix<T, 24, 24>;
-type Matrix8x3<T> = SMatrix<T, 8, 3>;
+use super::{GaussResult, GeneralElement, StructureElement};
 
 pub struct Cube8 {
-    connectivity: [usize; 8],          // 单元的节点序号数组
-    nodes_coordinates: Matrix8x3<f64>, // 单元节点的全局坐标数组, 每单元8节点, 每节点3坐标
-    gauss_matrix: MatrixXx4<f64>,      // 高斯积分矩阵, 1列->w 2列->xi 3列->eta 4列->zeta
-    K: Matrix24<f64>,                  // 单元刚度矩阵
+    node_dof: usize,                       // 节点自由度 结构分析为3
+    connectivity: [usize; 8],              // 单元的节点序号数组
+    nodes_coordinates: SMatrix<f64, 8, 3>, // 单元节点的全局坐标数组, 每单元8节点, 每节点3坐标
+    gauss_matrix: MatrixXx4<f64>,          // 高斯积分矩阵, 1列->w 2列->xi 3列->eta 4列->zeta
+    K: DMatrix<f64>,                       // 单元刚度矩阵
+    F: DVector<f64>,                       // 右端向量
 }
 
 impl Cube8 {
-    pub fn new(gauss_deg: usize) -> Self {
+    pub fn new(gauss_deg: usize, node_dof: usize) -> Self {
         Cube8 {
+            node_dof,
             connectivity: [0, 0, 0, 0, 0, 0, 0, 0],
-            nodes_coordinates: Matrix8x3::zeros(),
+            nodes_coordinates: SMatrix::zeros(),
             gauss_matrix: get_gauss_3d_matrix(gauss_deg),
-            K: Matrix24::zeros(),
+            K: DMatrix::zeros(8 * node_dof, 8 * node_dof),
+            F: DVector::zeros(8 * node_dof),
         }
     }
 
     // 在每个高斯点上做个预计算
-    fn gauss_point_calculate(
-        &self,
-        xi: f64,
-        eta: f64,
-        zeta: f64,
-    ) -> (SMatrix<f64, 8, 1>, Matrix8x3<f64>, f64) {
+    fn gauss_point_calculate(&self, xi: f64, eta: f64, zeta: f64) -> GaussResult<8, 3> {
         // 3维8节点六面体等参元形函数
         let shape_function_values = SMatrix::<f64, 8, 1>::from_column_slice(&[
             (1.0 - xi) * (1.0 - eta) * (1.0 - zeta) / 8.0, // N1
@@ -49,7 +50,7 @@ impl Cube8 {
          *  第二列 \frac{\partial Ni}{\partial \eta}
          *  第三列 \frac{\partial Ni}{\partial \zeta}
          */
-        let mut gradient_matrix = Matrix8x3::from_row_slice(&[
+        let mut gradient_matrix = SMatrix::<f64, 8, 3>::from_row_slice(&[
             // N1
             -(1.0 - eta) * (1.0 - zeta) / 8.0, // dN1/dxi
             -(1.0 - xi) * (1.0 - zeta) / 8.0,  // dN1/deta
@@ -103,11 +104,15 @@ impl Cube8 {
 
         gradient_matrix = gradient_matrix * inverse_J.transpose();
 
-        (shape_function_values, gradient_matrix, det_J)
+        GaussResult {
+            shape_function_values,
+            gradient_matrix,
+            det_J,
+        }
     }
 }
 
-impl GeneralElement for Cube8 {
+impl GeneralElement<8, 3> for Cube8 {
     // TODO: 将此方法集成到GeneralElement Trait中
     fn update(
         &mut self,
@@ -132,35 +137,60 @@ impl GeneralElement for Cube8 {
             });
     }
 
-    fn assemble(&mut self, stiffness_matrix: &mut DMatrix<f64>) {
-        for (i, node_i) in self.connectivity.iter().enumerate() {
-            for (j, node_j) in self.connectivity.iter().enumerate() {
-                stiffness_matrix[(3 * node_i + 0, 3 * node_j + 0)] +=
-                    self.K[(3 * i + 0, 3 * j + 0)];
-                stiffness_matrix[(3 * node_i + 0, 3 * node_j + 1)] +=
-                    self.K[(3 * i + 0, 3 * j + 1)];
-                stiffness_matrix[(3 * node_i + 0, 3 * node_j + 2)] +=
-                    self.K[(3 * i + 0, 3 * j + 2)];
-                stiffness_matrix[(3 * node_i + 1, 3 * node_j + 0)] +=
-                    self.K[(3 * i + 1, 3 * j + 0)];
-                stiffness_matrix[(3 * node_i + 1, 3 * node_j + 1)] +=
-                    self.K[(3 * i + 1, 3 * j + 1)];
-                stiffness_matrix[(3 * node_i + 1, 3 * node_j + 2)] +=
-                    self.K[(3 * i + 1, 3 * j + 2)];
-                stiffness_matrix[(3 * node_i + 2, 3 * node_j + 0)] +=
-                    self.K[(3 * i + 2, 3 * j + 0)];
-                stiffness_matrix[(3 * node_i + 2, 3 * node_j + 1)] +=
-                    self.K[(3 * i + 2, 3 * j + 1)];
-                stiffness_matrix[(3 * node_i + 2, 3 * node_j + 2)] +=
-                    self.K[(3 * i + 2, 3 * j + 2)];
+    fn general_stiffness_calculate<K, F>(&mut self, kij_operator: K, fi_operator: F)
+    where
+        K: Fn(usize, usize, &GaussResult<8, 3>) -> DMatrix<f64>,
+        F: Fn(usize, &GaussResult<8, 3>) -> DVector<f64>,
+    {
+        for row in self.gauss_matrix.row_iter() {
+            let xi = row[1];
+            let eta = row[2];
+            let zeta = row[3];
+            let w = row[0];
+            let gauss_result = self.gauss_point_calculate(xi, eta, zeta);
+            let JxW = gauss_result.det_J * w;
+            for i in 0..self.connectivity.len() {
+                let fi = fi_operator(i, &gauss_result) * JxW;
+                if fi.shape() != (self.node_dof, 1) {
+                    // TODO: 尝试用范型处理
+                    panic!("Shape of fi  not match")
+                }
+                self.F
+                    .rows_mut(i * self.node_dof, self.node_dof)
+                    .add_assign(&fi);
+                for j in 0..self.connectivity.len() {
+                    let kij = kij_operator(i, j, &gauss_result) * JxW;
+                    if kij.shape() != (self.node_dof, self.node_dof) {
+                        // TODO: 尝试用范型处理
+                        panic!("Shape of kij not match")
+                    }
+                    self.K
+                        .view_mut((i, j), (self.node_dof, self.node_dof))
+                        .add_assign(&kij);
+                }
+            }
+        }
+    }
+
+    fn general_assemble(
+        &mut self,
+        stiffness_matrix: &mut DMatrix<f64>,
+        right_vector: &mut DVector<f64>,
+    ) {
+        let flattened_connectivity = flatten_vector(&self.connectivity, self.node_dof);
+        for (i, node_i) in flattened_connectivity.iter().enumerate() {
+            right_vector[*node_i] += self.F[i];
+            for (j, node_j) in flattened_connectivity.iter().enumerate() {
+                stiffness_matrix[(*node_i, *node_j)] += self.K[(i, j)];
             }
         }
         self.K.fill(0.0);
+        self.F.fill(0.0);
     }
 }
 
 impl StructureElement<6> for Cube8 {
-    fn structure_calculate(&mut self, mat: &impl Material<6>) {
+    fn structure_stiffness_calculate(&mut self, mat: &impl Material<6>) {
         let mut B = Matrix6x3::zeros(); // 应变矩阵
         let mut Bt = Matrix3x6::zeros(); // 应变矩阵的转置
         for row in self.gauss_matrix.row_iter() {
@@ -168,7 +198,11 @@ impl StructureElement<6> for Cube8 {
             let eta = row[2];
             let zeta = row[3];
             let w = row[0];
-            let (_, gradient_matrix, det_J) = self.gauss_point_calculate(xi, eta, zeta);
+            let GaussResult {
+                gradient_matrix,
+                det_J,
+                ..
+            } = self.gauss_point_calculate(xi, eta, zeta);
             let JxW = det_J * w;
             for i in 0..self.connectivity.len() {
                 B[(0, 0)] = gradient_matrix[(i, 0)]; // 矩阵分块乘法, 每次计算出3x3的矩阵, 然后组装到单元刚度矩阵的对应位置
@@ -205,6 +239,32 @@ impl StructureElement<6> for Cube8 {
             }
         }
     }
+
+    fn structure_assemble(&mut self, stiffness_matrix: &mut DMatrix<f64>) {
+        for (i, node_i) in self.connectivity.iter().enumerate() {
+            for (j, node_j) in self.connectivity.iter().enumerate() {
+                stiffness_matrix[(3 * node_i + 0, 3 * node_j + 0)] +=
+                    self.K[(3 * i + 0, 3 * j + 0)];
+                stiffness_matrix[(3 * node_i + 0, 3 * node_j + 1)] +=
+                    self.K[(3 * i + 0, 3 * j + 1)];
+                stiffness_matrix[(3 * node_i + 0, 3 * node_j + 2)] +=
+                    self.K[(3 * i + 0, 3 * j + 2)];
+                stiffness_matrix[(3 * node_i + 1, 3 * node_j + 0)] +=
+                    self.K[(3 * i + 1, 3 * j + 0)];
+                stiffness_matrix[(3 * node_i + 1, 3 * node_j + 1)] +=
+                    self.K[(3 * i + 1, 3 * j + 1)];
+                stiffness_matrix[(3 * node_i + 1, 3 * node_j + 2)] +=
+                    self.K[(3 * i + 1, 3 * j + 2)];
+                stiffness_matrix[(3 * node_i + 2, 3 * node_j + 0)] +=
+                    self.K[(3 * i + 2, 3 * j + 0)];
+                stiffness_matrix[(3 * node_i + 2, 3 * node_j + 1)] +=
+                    self.K[(3 * i + 2, 3 * j + 1)];
+                stiffness_matrix[(3 * node_i + 2, 3 * node_j + 2)] +=
+                    self.K[(3 * i + 2, 3 * j + 2)];
+            }
+        }
+        self.K.fill(0.0);
+    }
 }
 
 #[cfg(test)]
@@ -222,13 +282,13 @@ mod tests {
         let n_dofs: usize = 24;
         let mesh = Lagrange3DMesh::new(0.0, 0.2, 1, 0.0, 0.8, 1, 0.0, 0.6, 1, "cube8");
         // println!("{}", mesh);
-        let mut cube8 = Cube8::new(2);
+        let mut cube8 = Cube8::new(2, 3);
         let mat = IsotropicLinearElastic3D::new(1.0e10, 0.25);
         let mut stiffness_matrix = DMatrix::zeros(n_dofs, n_dofs);
         for element_number in 0..mesh.get_element_count() {
             cube8.update(element_number, mesh.get_elements(), mesh.get_nodes());
-            cube8.structure_calculate(&mat);
-            cube8.assemble(&mut stiffness_matrix);
+            cube8.structure_stiffness_calculate(&mat);
+            cube8.structure_assemble(&mut stiffness_matrix);
         }
         let penalty = 1.0e20;
         let mut force_vector = DVector::zeros(n_dofs);
@@ -246,8 +306,15 @@ mod tests {
         }
 
         let displacement_vector = stiffness_matrix.lu().solve(&force_vector);
+        let answer = SMatrix::<f64, 24, 1>::from_row_slice(&[
+            -0.0000, -0.0000, -0.0000, 0.0000, -0.0000, -0.0000, -0.0223, -0.2769, -0.6728, 0.0223,
+            -0.2769, -0.6728, 0.0000, 0.0000, -0.0000, -0.0000, 0.0000, -0.0000, 0.0129, 0.3108,
+            -0.7774, -0.0129, 0.3108, -0.7774,
+        ]);
+        let err = 1e-3;
         if let Some(d) = displacement_vector {
-            println!("{:.4}", d * 1.0e3);
+            assert!((&d * 1.0e3).relative_eq(&answer, err, err));
+            println!("{:.4}", &d * 1.0e3);
         }
     }
 }
