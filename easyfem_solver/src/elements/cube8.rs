@@ -7,17 +7,17 @@ use super::{GeneralElement, StructureElement};
 type Matrix24<T> = SMatrix<T, 24, 24>;
 type Matrix8x3<T> = SMatrix<T, 8, 3>;
 
-pub struct Solid8 {
-    nodes_numbers: [usize; 8],         // 单元的节点序号数组
+pub struct Cube8 {
+    connectivity: [usize; 8],          // 单元的节点序号数组
     nodes_coordinates: Matrix8x3<f64>, // 单元节点的全局坐标数组, 每单元8节点, 每节点3坐标
     gauss_matrix: MatrixXx4<f64>,      // 高斯积分矩阵, 1列->w 2列->xi 3列->eta 4列->zeta
     K: Matrix24<f64>,                  // 单元刚度矩阵
 }
 
-impl Solid8 {
+impl Cube8 {
     pub fn new(gauss_deg: usize) -> Self {
-        Solid8 {
-            nodes_numbers: [0, 0, 0, 0, 0, 0, 0, 0],
+        Cube8 {
+            connectivity: [0, 0, 0, 0, 0, 0, 0, 0],
             nodes_coordinates: Matrix8x3::zeros(),
             gauss_matrix: get_gauss_3d_matrix(gauss_deg),
             K: Matrix24::zeros(),
@@ -107,7 +107,7 @@ impl Solid8 {
     }
 }
 
-impl GeneralElement for Solid8 {
+impl GeneralElement for Cube8 {
     // TODO: 将此方法集成到GeneralElement Trait中
     fn update(
         &mut self,
@@ -120,10 +120,10 @@ impl GeneralElement for Solid8 {
             .iter()
             .enumerate()
             .for_each(|(idx, node_idx)| {
-                self.nodes_numbers[idx] = *node_idx;
+                self.connectivity[idx] = *node_idx;
             });
 
-        self.nodes_numbers
+        self.connectivity
             .iter()
             .enumerate()
             .for_each(|(idx, node_idx)| {
@@ -133,8 +133,8 @@ impl GeneralElement for Solid8 {
     }
 
     fn assemble(&mut self, stiffness_matrix: &mut DMatrix<f64>) {
-        for (i, node_i) in self.nodes_numbers.iter().enumerate() {
-            for (j, node_j) in self.nodes_numbers.iter().enumerate() {
+        for (i, node_i) in self.connectivity.iter().enumerate() {
+            for (j, node_j) in self.connectivity.iter().enumerate() {
                 stiffness_matrix[(3 * node_i + 0, 3 * node_j + 0)] +=
                     self.K[(3 * i + 0, 3 * j + 0)];
                 stiffness_matrix[(3 * node_i + 0, 3 * node_j + 1)] +=
@@ -159,7 +159,7 @@ impl GeneralElement for Solid8 {
     }
 }
 
-impl StructureElement<6> for Solid8 {
+impl StructureElement<6> for Cube8 {
     fn structure_calculate(&mut self, mat: &impl Material<6>) {
         let mut B = Matrix6x3::zeros(); // 应变矩阵
         let mut Bt = Matrix3x6::zeros(); // 应变矩阵的转置
@@ -170,7 +170,7 @@ impl StructureElement<6> for Solid8 {
             let w = row[0];
             let (_, gradient_matrix, det_J) = self.gauss_point_calculate(xi, eta, zeta);
             let JxW = det_J * w;
-            for i in 0..self.nodes_numbers.len() {
+            for i in 0..self.connectivity.len() {
                 B[(0, 0)] = gradient_matrix[(i, 0)]; // 矩阵分块乘法, 每次计算出3x3的矩阵, 然后组装到单元刚度矩阵的对应位置
                 B[(1, 1)] = gradient_matrix[(i, 1)];
                 B[(2, 2)] = gradient_matrix[(i, 2)];
@@ -180,7 +180,7 @@ impl StructureElement<6> for Solid8 {
                 B[(4, 2)] = gradient_matrix[(i, 1)];
                 B[(5, 0)] = gradient_matrix[(i, 2)];
                 B[(5, 2)] = gradient_matrix[(i, 0)];
-                for j in 0..self.nodes_numbers.len() {
+                for j in 0..self.connectivity.len() {
                     Bt[(0, 0)] = gradient_matrix[(j, 0)];
                     Bt[(0, 3)] = gradient_matrix[(j, 1)];
                     Bt[(0, 5)] = gradient_matrix[(j, 2)];
@@ -209,6 +209,7 @@ impl StructureElement<6> for Solid8 {
 
 #[cfg(test)]
 mod tests {
+    use easyfem_mesh::{Lagrange3DMesh, Mesh};
     use nalgebra::{DMatrix, DVector};
 
     use crate::materials::IsotropicLinearElastic3D;
@@ -216,46 +217,34 @@ mod tests {
     use super::*;
 
     #[test]
+    /// 曾攀 有限元分析基础教程 算例4.8.2
     fn structure_test_1() {
         let n_dofs: usize = 24;
-        let element_node_matrix = DMatrix::from_row_slice(1, 8, &[0, 1, 2, 3, 4, 5, 6, 7]);
-        let node_coordinate_matrix = MatrixXx3::from_row_slice(&[
-            0.2, 0.0, 0.0, // 0
-            0.2, 0.8, 0.0, // 1
-            0.0, 0.8, 0.0, // 2
-            0.0, 0.0, 0.0, // 3
-            0.2, 0.0, 0.6, // 4
-            0.2, 0.8, 0.6, // 5
-            0.0, 0.8, 0.6, // 6
-            0.0, 0.0, 0.6, // 7
-        ]);
-        let mut solid8 = Solid8::new(2);
+        let mesh = Lagrange3DMesh::new(0.0, 0.2, 1, 0.0, 0.8, 1, 0.0, 0.6, 1, "cube8");
+        // println!("{}", mesh);
+        let mut cube8 = Cube8::new(2);
         let mat = IsotropicLinearElastic3D::new(1.0e10, 0.25);
         let mut stiffness_matrix = DMatrix::zeros(n_dofs, n_dofs);
-        for element_number in 0..element_node_matrix.nrows() {
-            solid8.update(
-                element_number,
-                &element_node_matrix,
-                &node_coordinate_matrix,
-            );
-            solid8.structure_calculate(&mat);
-            solid8.assemble(&mut stiffness_matrix);
+        for element_number in 0..mesh.get_element_count() {
+            cube8.update(element_number, mesh.get_elements(), mesh.get_nodes());
+            cube8.structure_calculate(&mat);
+            cube8.assemble(&mut stiffness_matrix);
         }
         let penalty = 1.0e20;
         let mut force_vector = DVector::zeros(n_dofs);
-        force_vector[5 * 3 + 2] = -1.0e5;
         force_vector[6 * 3 + 2] = -1.0e5;
-        // println!("stiffness_matrix = {:.1e}", stiffness_matrix);
-        for i in [0, 3, 7, 4] as [usize; 4] {
-            let x = i * 3 + 0;
-            let y = i * 3 + 1;
-            let z = i * 3 + 2;
-            stiffness_matrix[(x, x)] *= penalty;
-            stiffness_matrix[(y, y)] *= penalty;
-            stiffness_matrix[(z, z)] *= penalty;
+        force_vector[7 * 3 + 2] = -1.0e5;
+        if let Some(left_nodes) = mesh.get_boundary_node_ids().get("left") {
+            for i in left_nodes {
+                let x = i * 3 + 0;
+                let y = i * 3 + 1;
+                let z = i * 3 + 2;
+                stiffness_matrix[(x, x)] *= penalty;
+                stiffness_matrix[(y, y)] *= penalty;
+                stiffness_matrix[(z, z)] *= penalty;
+            }
         }
-        // println!("stiffness_matrix = {:.1e}", &stiffness_matrix);
-        // println!("{:.3e}", &force_vector);
+
         let displacement_vector = stiffness_matrix.lu().solve(&force_vector);
         if let Some(d) = displacement_vector {
             println!("{:.4}", d * 1.0e3);

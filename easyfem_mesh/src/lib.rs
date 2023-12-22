@@ -1,9 +1,13 @@
+use nalgebra::{DMatrix, MatrixXx3};
+
 mod lagrange_1d_mesh;
 pub use lagrange_1d_mesh::Lagrange1DMesh;
 
 mod lagrange_2d_mesh;
 pub use lagrange_2d_mesh::Lagrange2DMesh;
-use nalgebra::{DMatrix, MatrixXx3};
+
+mod lagrange_3d_mesh;
+pub use lagrange_3d_mesh::Lagrange3DMesh;
 
 pub trait Mesh {
     fn get_elements(&self) -> &DMatrix<usize>;

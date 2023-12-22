@@ -1,7 +1,6 @@
-use std::collections::HashMap;
-use std::fmt;
+use std::{collections::HashMap, fmt};
 
-use nalgebra::{DMatrix, MatrixXx3, RowVector4};
+use nalgebra::{DMatrix, MatrixXx3, SMatrix};
 
 use crate::Mesh;
 
@@ -23,28 +22,12 @@ impl Lagrange2DMesh {
     ) -> Self {
         match mesh_type {
             "quad4" => Self::get_quad4_mesh(xmin, xmax, nx, ymin, ymax, ny),
-            _ => todo!(),
+            &_ => todo!(),
         }
     }
 
     fn get_quad4_mesh(xmin: f64, xmax: f64, nx: usize, ymin: f64, ymax: f64, ny: usize) -> Self {
         let order = 1;
-        let mut boundary_node_ids = HashMap::new();
-        let mut element_connectivity_matrix = DMatrix::zeros(nx * ny, 4);
-        for j in 1..ny + 1 {
-            for i in 1..nx + 1 {
-                let e = (j - 1) * nx + i - 1;
-                let e0 = (j - 1) * (nx + 1) + i - 1;
-                let e1 = e0 + 1;
-                let e2 = e1 + nx + 1;
-                let e3 = e2 - 1;
-                // 3 +-----+ 2
-                //   |     |
-                //   |     |
-                // 0 +-----+ 1
-                element_connectivity_matrix.set_row(e, &RowVector4::new(e0, e1, e2, e3));
-            }
-        }
         let dx = (xmax - xmin) / (nx * order) as f64;
         let dy = (ymax - ymin) / (ny * order) as f64;
         // let node_coordinate_matrix = MatrixXx3::from_fn((nx + 1) * (ny + 1), |r, c| {
@@ -58,6 +41,7 @@ impl Lagrange2DMesh {
         //     result
         // });
         let mut node_coordinate_matrix = MatrixXx3::zeros((nx + 1) * (ny + 1));
+        let mut boundary_node_ids = HashMap::new();
         for j in 0..ny + 1 {
             for i in 0..nx + 1 {
                 let node_id = j * (nx + 1) + i;
@@ -87,6 +71,24 @@ impl Lagrange2DMesh {
                         .or_insert(Vec::new())
                         .push(node_id);
                 }
+            }
+        }
+        let mut element_connectivity_matrix = DMatrix::zeros(nx * ny, 4);
+        for j in 1..ny + 1 {
+            for i in 1..nx + 1 {
+                let e = (j - 1) * nx + i - 1;
+                let e0 = (j - 1) * (nx + 1) + i - 1;
+                let e1 = e0 + 1;
+                let e2 = e1 + nx + 1;
+                let e3 = e2 - 1;
+                // 3 +-----+ 2
+                //   |     |
+                //   |     |
+                // 0 +-----+ 1
+                element_connectivity_matrix.set_row(
+                    e,
+                    &SMatrix::<usize, 1, 4>::from_row_slice(&[e0, e1, e2, e3]),
+                );
             }
         }
         Lagrange2DMesh {
@@ -130,7 +132,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn lagrange_2d_mesh_test_1() {
+    fn quad4_test_1() {
         let mesh = Lagrange2DMesh::new(0.0, 1.0, 5, 0.0, 1.0, 5, "quad4");
         println!("{}", mesh);
     }

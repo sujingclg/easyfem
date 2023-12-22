@@ -1,4 +1,4 @@
-use std::usize;
+use std::{fmt, usize};
 
 use nalgebra::{DMatrix, MatrixXx3};
 
@@ -57,21 +57,29 @@ impl Mesh for Lagrange1DMesh {
     }
 }
 
+impl fmt::Display for Lagrange1DMesh {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{:.2}\n{}",
+            self.node_coordinate_matrix, self.element_connectivity_matrix,
+        )
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn lagrange_1d_mesh_test_1() {
+    fn edge2_test_1() {
         let mesh = Lagrange1DMesh::new(0.0, 1.0, 5, "edge2");
-        println!("{:}", mesh.node_coordinate_matrix);
-        println!("{:}", mesh.element_connectivity_matrix);
+        println!("{}", mesh);
     }
 
     #[test]
-    fn lagrange_1d_mesh_test_2() {
+    fn edge3_test_2() {
         let mesh = Lagrange1DMesh::new(0.0, 1.0, 2, "edge3");
-        println!("{:}", mesh.node_coordinate_matrix);
-        println!("{:}", mesh.element_connectivity_matrix);
+        println!("{}", mesh);
     }
 }

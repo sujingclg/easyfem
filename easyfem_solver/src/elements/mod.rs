@@ -1,18 +1,18 @@
 use nalgebra::{DMatrix, MatrixXx3};
 
+mod cube8;
 mod edge2;
 mod edge3;
 mod quad4;
 mod quad9;
-mod solid8;
 mod tria3;
 mod tria6;
 
+pub use cube8::Cube8;
 pub use edge2::Edge2;
 pub use edge3::Edge3;
 pub use quad4::Quad4;
 pub use quad9::Quad9;
-pub use solid8::Solid8;
 pub use tria3::Tria3;
 pub use tria6::Tria6;
 

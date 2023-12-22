@@ -5,7 +5,7 @@ use crate::{base::gauss::get_gauss_2d_matrix, materials::Material};
 use super::{GeneralElement, StructureElement};
 
 pub struct Quad4 {
-    nodes_numbers: [usize; 4],         // 单元的节点序号数组
+    connectivity: [usize; 4],          // 单元的节点序号数组
     nodes_coordinates: Matrix4x2<f64>, // 单元节点的全局坐标数组, 每单元4节点, 每节点2坐标
     gauss_matrix: MatrixXx3<f64>,      // 高斯积分矩阵, 1列->w 2列->xi 3列->eta
     K: SMatrix<f64, 8, 8>,             // 单元刚度矩阵
@@ -15,7 +15,7 @@ impl Quad4 {
     pub fn new(gauss_deg: usize, // 高斯积分阶数
     ) -> Self {
         Quad4 {
-            nodes_numbers: [0; 4],
+            connectivity: [0; 4],
             nodes_coordinates: Matrix4x2::zeros(),
             gauss_matrix: get_gauss_2d_matrix(gauss_deg),
             K: SMatrix::zeros(),
@@ -71,10 +71,10 @@ impl GeneralElement for Quad4 {
             .iter()
             .enumerate()
             .for_each(|(idx, node_idx)| {
-                self.nodes_numbers[idx] = *node_idx;
+                self.connectivity[idx] = *node_idx;
             });
 
-        self.nodes_numbers
+        self.connectivity
             .iter()
             .enumerate()
             .for_each(|(idx, node_idx)| {
@@ -84,8 +84,8 @@ impl GeneralElement for Quad4 {
     }
 
     fn assemble(&mut self, stiffness_matrix: &mut DMatrix<f64>) {
-        for (i, node_i) in self.nodes_numbers.iter().enumerate() {
-            for (j, node_j) in self.nodes_numbers.iter().enumerate() {
+        for (i, node_i) in self.connectivity.iter().enumerate() {
+            for (j, node_j) in self.connectivity.iter().enumerate() {
                 stiffness_matrix[(2 * node_i + 0, 2 * node_j + 0)] +=
                     self.K[(2 * i + 0, 2 * j + 0)];
                 stiffness_matrix[(2 * node_i + 0, 2 * node_j + 1)] +=
@@ -110,12 +110,12 @@ impl StructureElement<3> for Quad4 {
             let w = row[0];
             let (_, gradient_matrix, det_J) = self.gauss_point_calculate(xi, eta);
             let JxW = det_J * w;
-            for i in 0..self.nodes_numbers.len() {
+            for i in 0..self.connectivity.len() {
                 B[(0, 0)] = gradient_matrix[(i, 0)]; // 矩阵分块乘法, 每次计算出2x2的矩阵, 然后组装到单元刚度矩阵的对应位置
                 B[(1, 1)] = gradient_matrix[(i, 1)];
                 B[(2, 0)] = gradient_matrix[(i, 1)];
                 B[(2, 1)] = gradient_matrix[(i, 0)];
-                for j in 0..self.nodes_numbers.len() {
+                for j in 0..self.connectivity.len() {
                     Bt[(0, 0)] = gradient_matrix[(j, 0)];
                     Bt[(0, 2)] = gradient_matrix[(j, 1)];
                     Bt[(1, 1)] = gradient_matrix[(j, 1)];
@@ -141,6 +141,7 @@ mod tests {
     use super::*;
 
     #[test]
+    /// Daryl L. Logan 有限元方法基础教程(第五版)  例10.4
     fn structure_test_1() {
         let n_dofs: usize = 8;
         let element_node_matrix = DMatrix::from_row_slice(1, 4, &[0, 1, 2, 3]);
@@ -166,6 +167,7 @@ mod tests {
     }
 
     #[test]
+    /// Daryl L. Logan 有限元方法基础教程(第五版)  例10.4
     fn structure_test_2() {
         let n_dofs: usize = 8;
         let mesh = Lagrange2DMesh::new(3.0, 5.0, 1, 2.0, 4.0, 1, "quad4");
