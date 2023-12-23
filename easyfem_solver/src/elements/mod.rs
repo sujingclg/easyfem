@@ -18,9 +18,9 @@ use crate::materials::Material;
 /// N -> 单元节点个数
 /// D -> 坐标系维度
 pub struct GaussResult<const N: usize, const D: usize> {
-    pub shape_function_values: SMatrix<f64, N, 1>,
-    pub gradient_matrix: SMatrix<f64, N, D>,
-    pub det_J: f64,
+    pub shp_val: SMatrix<f64, N, 1>,  // shape function values
+    pub shp_grad: SMatrix<f64, N, D>, // shape function gradient matrix
+    pub det_J: f64,                   // det of jacob matrix
 }
 
 /// N -> 单元节点个数
@@ -29,12 +29,13 @@ pub trait GeneralElement<const N: usize, const D: usize> {
     fn update(
         &mut self,
         element_number: usize,                   // 单元编号, 即单元的全局索引
-        element_node_matrix: &DMatrix<usize>,    // 全局单元-节点编号矩阵
+        connectivity_matrix: &DMatrix<usize>,    // 全局单元-节点编号矩阵
         node_coordinate_matrix: &MatrixXx3<f64>, // 全局节点-坐标矩阵
     );
 
     /// kij: 刚度矩阵算子
     /// fi: 右端项算子
+    /// 返回值要求是DOFxDOF的方阵, DOF为节点自由度
     fn general_stiffness_calculate<K, F>(&mut self, kij_operator: K, fi_operator: F)
     where
         K: Fn(usize, usize, &GaussResult<N, D>) -> DMatrix<f64>,

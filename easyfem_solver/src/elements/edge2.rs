@@ -33,13 +33,13 @@ impl Edge2 {
 
     fn gauss_point_calculate(&self, xi: f64) -> GaussResult<2, 1> {
         // 1维2节点等参元形函数
-        let shape_function_values = Vector2::new(
+        let shp_val = Vector2::new(
             (1.0 - xi) / 2.0, // N1
             (1.0 + xi) / 2.0, // N2
         );
 
         // 梯度矩阵，每个元素分别是形函数对xi求偏导: \frac{\partial Ni}{\partial \xi}
-        let mut gradient_matrix = Matrix2x1::new(
+        let mut shp_grad = Matrix2x1::new(
             -0.5, // dN1/dxi
             0.5,  // dN2/dxi
         );
@@ -48,16 +48,16 @@ impl Edge2 {
 
         // 遍历单元的每个节点
         for i in 0..self.connectivity.len() {
-            dx_dxi += gradient_matrix[i] * self.nodes_coordinates[i];
+            dx_dxi += shp_grad[i] * self.nodes_coordinates[i];
         }
         // let det_jacob = f64::abs(dx_dxi);
         let det_J = dx_dxi; // jacob行列式
 
-        gradient_matrix /= det_J; // 梯度矩阵除以jacob行列式以便进行单元组装
+        shp_grad /= det_J; // 梯度矩阵除以jacob行列式以便进行单元组装
 
         GaussResult {
-            shape_function_values,
-            gradient_matrix,
+            shp_val,
+            shp_grad,
             det_J,
         }
     }
@@ -67,10 +67,10 @@ impl GeneralElement<2, 1> for Edge2 {
     fn update(
         &mut self,
         element_number: usize,                   // 单元编号, 即单元的全局索引
-        element_node_matrix: &DMatrix<usize>,    // 全局单元-节点编号矩阵, 每单元2节点
+        connectivity_matrix: &DMatrix<usize>,    // 全局单元-节点编号矩阵, 每单元2节点
         node_coordinate_matrix: &MatrixXx3<f64>, // 全局节点-坐标矩阵, 每节点3坐标只取第一个
     ) {
-        element_node_matrix
+        connectivity_matrix
             .row(element_number)
             .iter()
             .enumerate()
@@ -147,8 +147,8 @@ impl StructureElement<1> for Edge2 {
             for i in 0..self.connectivity.len() {
                 for j in 0..self.connectivity.len() {
                     // 这里要对高斯积分进行累加
-                    self.K[(i, j)] += gauss_result.gradient_matrix[j]
-                        * gauss_result.gradient_matrix[i]
+                    self.K[(i, j)] += gauss_result.shp_grad[j]
+                        * gauss_result.shp_grad[i]
                         * mat.get_constitutive_matrix()[(0, 0)]
                         * JxW;
                 }
@@ -201,23 +201,18 @@ mod tests {
     fn poisson_test_1() {
         let mesh = Lagrange1DMesh::new(0.0, 1.0, 10, "edge2");
         let mut edge2 = Edge2::new(2, 1);
-        let n_dofs = mesh.get_nodes().nrows();
+        let n_dofs = mesh.get_node_count();
         let mut stiffness_matrix = DMatrix::zeros(n_dofs, n_dofs);
         let mut right_vector = DVector::zeros(n_dofs);
 
         fn kij_operator(i: usize, j: usize, gauss_result: &GaussResult<2, 1>) -> DMatrix<f64> {
-            let GaussResult {
-                gradient_matrix, ..
-            } = gauss_result;
-            DMatrix::from_element(1, 1, gradient_matrix[j] * gradient_matrix[i])
+            let GaussResult { shp_grad, .. } = gauss_result;
+            DMatrix::from_element(1, 1, shp_grad[j] * shp_grad[i])
         }
 
         fn fi_operator(i: usize, gauss_result: &GaussResult<2, 1>) -> DVector<f64> {
-            let GaussResult {
-                shape_function_values,
-                ..
-            } = gauss_result;
-            DVector::from_element(1, 200.0 * shape_function_values[i])
+            let GaussResult { shp_val, .. } = gauss_result;
+            DVector::from_element(1, 200.0 * shp_val[i])
         }
 
         for element_number in 0..mesh.get_element_count() {

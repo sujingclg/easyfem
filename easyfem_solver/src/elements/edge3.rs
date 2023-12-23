@@ -32,14 +32,14 @@ impl Edge3 {
 
     fn gauss_point_calculate(&self, xi: f64) -> GaussResult<3, 1> {
         // 1维3节点等参元形函数
-        let shape_function_values = Vector3::new(
+        let shp_val = Vector3::new(
             xi * (xi - 1.0) * 0.5, // N1
             xi * (xi + 1.0) * 0.5, // N2
             1.0 - xi.powi(2),      // N3
         );
 
         // 梯度矩阵，每个元素分别是形函数对xi求偏导: \frac{\partial Ni}{\partial \xi}
-        let mut gradient_matrix = Matrix3x1::new(
+        let mut shp_grad = Matrix3x1::new(
             xi - 0.5,  // dN1/dxi
             xi + 0.5,  // dN2/dxi
             -2.0 * xi, // dN3/dxi
@@ -49,16 +49,16 @@ impl Edge3 {
 
         // 遍历单元的每个节点
         for i in 0..self.connectivity.len() {
-            dx_dxi += gradient_matrix[i] * self.nodes_coordinates[i];
+            dx_dxi += shp_grad[i] * self.nodes_coordinates[i];
         }
         // let det_J = f64::abs(dx_dxi);
         let det_J = dx_dxi; // jacob行列式
 
-        gradient_matrix /= det_J; // 梯度矩阵除以jacob行列式以便进行单元组装
+        shp_grad /= det_J; // 梯度矩阵除以jacob行列式以便进行单元组装
 
         GaussResult {
-            shape_function_values,
-            gradient_matrix,
+            shp_val,
+            shp_grad,
             det_J,
         }
     }
@@ -68,10 +68,10 @@ impl GeneralElement<3, 1> for Edge3 {
     fn update(
         &mut self,
         element_number: usize,                   // 单元编号, 即单元的全局索引
-        element_node_matrix: &DMatrix<usize>,    // 全局单元-节点编号矩阵
+        connectivity_matrix: &DMatrix<usize>,    // 全局单元-节点编号矩阵
         node_coordinate_matrix: &MatrixXx3<f64>, // 全局节点-坐标矩阵
     ) {
-        element_node_matrix
+        connectivity_matrix
             .row(element_number)
             .iter()
             .enumerate()
@@ -149,8 +149,8 @@ impl StructureElement<1> for Edge3 {
             for i in 0..self.connectivity.len() {
                 for j in 0..self.connectivity.len() {
                     // 这里要对高斯积分进行累加
-                    self.K[(i, j)] += gauss_result.gradient_matrix[j]
-                        * gauss_result.gradient_matrix[i]
+                    self.K[(i, j)] += gauss_result.shp_grad[j]
+                        * gauss_result.shp_grad[i]
                         * mat.get_constitutive_matrix()[(0, 0)]
                         * JxW;
                 }

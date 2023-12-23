@@ -24,7 +24,7 @@ impl GmshReader {
         mesh
     }
 
-    fn parse_mesh_format(mesh: &mut GmshMesh, lines_iter: &mut io::Lines<io::BufReader<File>>) {
+    fn parse_mesh_format(_mesh: &mut GmshMesh, lines_iter: &mut io::Lines<io::BufReader<File>>) {
         if let Some(Ok(line)) = lines_iter.next() {
             let s: Vec<&str> = line.trim().split_whitespace().collect();
             println!("{:?}", s);

@@ -15,6 +15,8 @@ pub trait Mesh {
     fn get_nodes(&self) -> &MatrixXx3<f64>;
 
     fn get_element_count(&self) -> usize;
+
+    fn get_node_count(&self) -> usize;
 }
 
 /// DOF -> degree 节点自由度

@@ -33,7 +33,7 @@ impl Quad4 {
     // 在每个高斯点上做个预计算
     fn gauss_point_calculate(&self, xi: f64, eta: f64) -> GaussResult<4, 2> {
         // 2维4节点等参元形函数
-        let shape_function_values = Vector4::new(
+        let shp_val = Vector4::new(
             (1.0 - xi) * (1.0 - eta) / 4.0, // N1
             (1.0 + xi) * (1.0 - eta) / 4.0, // N2
             (1.0 + xi) * (1.0 + eta) / 4.0, // N3
@@ -41,7 +41,7 @@ impl Quad4 {
         );
 
         // 梯度矩阵，每个元素分别是形函数分别对xi和eta求偏导: \frac{\partial Ni}{\partial \xi} \frac{\partial Ni}{\partial \eta}
-        let mut gradient_matrix = Matrix4x2::new(
+        let mut shp_grad = Matrix4x2::new(
             (eta - 1.0) / 4.0,  // dN1/dxi
             (xi - 1.0) / 4.0,   // dN1/deta
             (1.0 - eta) / 4.0,  // dN2/dxi
@@ -53,19 +53,19 @@ impl Quad4 {
         );
 
         // jacob矩阵形式为[[dx_dxi, dy_dxi],[dx_deta, dy_deta]]
-        let J = gradient_matrix.transpose() * self.nodes_coordinates;
+        let J = shp_grad.transpose() * self.nodes_coordinates;
         let det_J = J.determinant(); // 行列式
 
         // jacob逆矩阵形式为[[dxi_dx, deta_dx],[dxi_dy, deta_dy]]
         let inverse_J = J.try_inverse().unwrap(); // 逆矩阵
 
-        // gradient_matrix 的每一行变为下式, Ni从N1到N4
+        // shp_grad 的每一行变为下式, Ni从N1到N4
         // dNi/dxi * dxi/dx + dNi/deta * deta/dx, dNi/dxi * dxi/dy + dNi/deta * deta/dy
-        gradient_matrix = gradient_matrix * inverse_J.transpose();
+        shp_grad = shp_grad * inverse_J.transpose();
 
         GaussResult {
-            shape_function_values,
-            gradient_matrix,
+            shp_val,
+            shp_grad,
             det_J,
         }
     }
@@ -75,10 +75,10 @@ impl GeneralElement<4, 2> for Quad4 {
     fn update(
         &mut self,
         element_number: usize,                   // 单元编号, 即单元的全局索引
-        element_node_matrix: &DMatrix<usize>,    // 全局单元-节点编号矩阵, 每单元4节点
+        connectivity_matrix: &DMatrix<usize>,    // 全局单元-节点编号矩阵, 每单元4节点
         node_coordinate_matrix: &MatrixXx3<f64>, // 全局节点-坐标矩阵, 每节点3坐标只取前两个
     ) {
-        element_node_matrix
+        connectivity_matrix
             .row(element_number)
             .iter()
             .enumerate()
@@ -155,21 +155,19 @@ impl StructureElement<3> for Quad4 {
             let eta = row[2];
             let w = row[0];
             let GaussResult {
-                gradient_matrix,
-                det_J,
-                ..
+                shp_grad, det_J, ..
             } = self.gauss_point_calculate(xi, eta);
             let JxW = det_J * w;
             for i in 0..self.connectivity.len() {
-                B[(0, 0)] = gradient_matrix[(i, 0)]; // 矩阵分块乘法, 每次计算出2x2的矩阵, 然后组装到单元刚度矩阵的对应位置
-                B[(1, 1)] = gradient_matrix[(i, 1)];
-                B[(2, 0)] = gradient_matrix[(i, 1)];
-                B[(2, 1)] = gradient_matrix[(i, 0)];
+                B[(0, 0)] = shp_grad[(i, 0)]; // 矩阵分块乘法, 每次计算出2x2的矩阵, 然后组装到单元刚度矩阵的对应位置
+                B[(1, 1)] = shp_grad[(i, 1)];
+                B[(2, 0)] = shp_grad[(i, 1)];
+                B[(2, 1)] = shp_grad[(i, 0)];
                 for j in 0..self.connectivity.len() {
-                    Bt[(0, 0)] = gradient_matrix[(j, 0)];
-                    Bt[(0, 2)] = gradient_matrix[(j, 1)];
-                    Bt[(1, 1)] = gradient_matrix[(j, 1)];
-                    Bt[(1, 2)] = gradient_matrix[(j, 0)];
+                    Bt[(0, 0)] = shp_grad[(j, 0)];
+                    Bt[(0, 2)] = shp_grad[(j, 1)];
+                    Bt[(1, 1)] = shp_grad[(j, 1)];
+                    Bt[(1, 2)] = shp_grad[(j, 0)];
                     let C = Bt * mat.get_constitutive_matrix() * B;
                     // 这里要对高斯积分进行累加
                     self.K[(2 * i + 0, 2 * j + 0)] += C[(0, 0)] * JxW; // K_ux,ux
@@ -240,25 +238,23 @@ mod tests {
     fn poisson_test_1() {
         let mesh = Lagrange2DMesh::new(0.0, 1.0, 5, 0.0, 1.0, 5, "quad4");
         let mut quad4 = Quad4::new(2, 1);
-        let n_dofs = mesh.get_nodes().nrows();
+        let n_dofs = mesh.get_node_count();
         let mut stiffness_matrix = DMatrix::zeros(n_dofs, n_dofs);
         let mut right_vector = DVector::zeros(n_dofs);
         for element_number in 0..mesh.get_element_count() {
             quad4.update(element_number, mesh.get_elements(), mesh.get_nodes());
             quad4.general_stiffness_calculate(
                 |i, j, gauss_result| {
-                    let GaussResult {
-                        gradient_matrix, ..
-                    } = gauss_result;
+                    let GaussResult { shp_grad, .. } = gauss_result;
                     DMatrix::from_element(
                         1,
                         1,
-                        gradient_matrix[(j, 0)] * gradient_matrix[(i, 0)]
-                            + gradient_matrix[(j, 1)] * gradient_matrix[(i, 1)],
+                        shp_grad[(j, 0)] * shp_grad[(i, 0)] + shp_grad[(j, 1)] * shp_grad[(i, 1)],
                     )
                 },
                 |i, gauss_result| {
-                    DVector::from_element(1, 200.0 * gauss_result.shape_function_values[i])
+                    let GaussResult { shp_val, .. } = gauss_result;
+                    DVector::from_element(1, 200.0 * shp_val[i])
                 },
             );
             quad4.general_assemble(&mut stiffness_matrix, &mut right_vector);

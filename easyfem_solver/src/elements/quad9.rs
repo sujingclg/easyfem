@@ -32,7 +32,7 @@ impl Quad9 {
 
     fn gauss_point_calculate(&self, xi: f64, eta: f64) -> GaussResult<9, 2> {
         // 2维9节点等参元形函数
-        let shape_function_values = SMatrix::from_column_slice(&[
+        let shp_val = SMatrix::from_column_slice(&[
             (xi * xi - xi) * (eta * eta - eta) / 4.0,  // N1
             (xi * xi + xi) * (eta * eta - eta) / 4.0,  // N2
             (xi * xi + xi) * (eta * eta + eta) / 4.0,  // N3
@@ -44,7 +44,7 @@ impl Quad9 {
             (1.0 - xi * xi) * (1.0 - eta * eta),       // N9
         ]);
 
-        let mut gradient_matrix = SMatrix::<f64, 9, 2>::from_row_slice(&[
+        let mut shp_grad = SMatrix::<f64, 9, 2>::from_row_slice(&[
             (2.0 * xi - 1.0) * (eta * eta - eta) / 4.0, // dN1/dxi
             (xi * xi - xi) * (2.0 * eta - 1.0) / 4.0,   // dN1/deta
             //
@@ -73,16 +73,16 @@ impl Quad9 {
             -2.0 * eta * (1.0 - xi * xi),  // dN9/deta
         ]);
 
-        let J = gradient_matrix.transpose() * self.nodes_coordinates;
+        let J = shp_grad.transpose() * self.nodes_coordinates;
         let det_J = J.determinant();
 
         let inverse_J = J.try_inverse().unwrap();
 
-        gradient_matrix = gradient_matrix * inverse_J.transpose();
+        shp_grad = shp_grad * inverse_J.transpose();
 
         GaussResult {
-            shape_function_values,
-            gradient_matrix,
+            shp_val,
+            shp_grad,
             det_J,
         }
     }
@@ -92,10 +92,10 @@ impl GeneralElement<9, 2> for Quad9 {
     fn update(
         &mut self,
         element_number: usize,                   // 单元编号, 即单元的全局索引
-        element_node_matrix: &DMatrix<usize>,    // 全局单元-节点编号矩阵, 每单元4节点
+        connectivity_matrix: &DMatrix<usize>,    // 全局单元-节点编号矩阵, 每单元4节点
         node_coordinate_matrix: &MatrixXx3<f64>, // 全局节点-坐标矩阵, 每节点3坐标只取前两个
     ) {
-        element_node_matrix
+        connectivity_matrix
             .row(element_number)
             .iter()
             .enumerate()
@@ -172,22 +172,20 @@ impl StructureElement<3> for Quad9 {
             let eta = row[2];
             let w = row[0];
             let GaussResult {
-                gradient_matrix,
-                det_J,
-                ..
+                shp_grad, det_J, ..
             } = self.gauss_point_calculate(xi, eta);
             let JxW = det_J * w;
             for i in 0..self.connectivity.len() {
-                B[(0, 0)] = gradient_matrix[(i, 0)]; // 矩阵分块乘法, 每次计算出2x2的矩阵, 然后组装到单元刚度矩阵的对应位置
-                B[(1, 1)] = gradient_matrix[(i, 1)];
-                B[(2, 0)] = gradient_matrix[(i, 1)];
-                B[(2, 1)] = gradient_matrix[(i, 0)];
+                B[(0, 0)] = shp_grad[(i, 0)]; // 矩阵分块乘法, 每次计算出2x2的矩阵, 然后组装到单元刚度矩阵的对应位置
+                B[(1, 1)] = shp_grad[(i, 1)];
+                B[(2, 0)] = shp_grad[(i, 1)];
+                B[(2, 1)] = shp_grad[(i, 0)];
                 for j in 0..self.connectivity.len() {
                     // println!("i = {i}, j = {j}");
-                    Bt[(0, 0)] = gradient_matrix[(j, 0)];
-                    Bt[(0, 2)] = gradient_matrix[(j, 1)];
-                    Bt[(1, 1)] = gradient_matrix[(j, 1)];
-                    Bt[(1, 2)] = gradient_matrix[(j, 0)];
+                    Bt[(0, 0)] = shp_grad[(j, 0)];
+                    Bt[(0, 2)] = shp_grad[(j, 1)];
+                    Bt[(1, 1)] = shp_grad[(j, 1)];
+                    Bt[(1, 2)] = shp_grad[(j, 0)];
                     let C = Bt * mat.get_constitutive_matrix() * B;
                     // 这里要对高斯积分进行累加
                     self.K[(2 * i + 0, 2 * j + 0)] += C[(0, 0)] * JxW; // K_ux,ux
@@ -228,7 +226,7 @@ mod tests {
     #[test]
     fn structure_test_1() {
         let n_dofs: usize = 18;
-        let element_node_matrix = DMatrix::from_row_slice(1, 9, &[0, 1, 2, 3, 4, 5, 6, 7, 8]);
+        let connectivity_matrix = DMatrix::from_row_slice(1, 9, &[0, 1, 2, 3, 4, 5, 6, 7, 8]);
         let node_coordinate_matrix = MatrixXx3::from_row_slice(&[
             3.0, 2.0, 0.0, // 0
             5.0, 2.0, 0.0, // 1
@@ -243,10 +241,10 @@ mod tests {
         let mut quad4 = Quad9::new(2, 2);
         let mat = IsotropicLinearElastic2D::new(3.0e7, 0.25, PlaneCondition::PlaneStress, 1.0);
         let mut stiffness_matrix = DMatrix::zeros(n_dofs, n_dofs);
-        for element_number in 0..element_node_matrix.nrows() {
+        for element_number in 0..connectivity_matrix.nrows() {
             quad4.update(
                 element_number,
-                &element_node_matrix,
+                &connectivity_matrix,
                 &node_coordinate_matrix,
             );
             quad4.structure_stiffness_calculate(&mat);

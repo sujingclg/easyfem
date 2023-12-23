@@ -5,8 +5,8 @@ use nalgebra::{DMatrix, MatrixXx3, SMatrix};
 use crate::Mesh;
 
 pub struct Lagrange2DMesh {
-    element_connectivity_matrix: DMatrix<usize>, // 单元节点矩阵
-    node_coordinate_matrix: MatrixXx3<f64>,      // 节点坐标矩阵
+    connectivity_matrix: DMatrix<usize>,            // 单元节点矩阵
+    node_coordinate_matrix: MatrixXx3<f64>,         // 节点坐标矩阵
     boundary_node_ids: HashMap<String, Vec<usize>>, // 2d网格边界上的点
 }
 
@@ -73,7 +73,7 @@ impl Lagrange2DMesh {
                 }
             }
         }
-        let mut element_connectivity_matrix = DMatrix::zeros(nx * ny, 4);
+        let mut connectivity_matrix = DMatrix::zeros(nx * ny, 4);
         for j in 1..ny + 1 {
             for i in 1..nx + 1 {
                 let e = (j - 1) * nx + i - 1;
@@ -85,14 +85,14 @@ impl Lagrange2DMesh {
                 //   |     |
                 //   |     |
                 // 0 +-----+ 1
-                element_connectivity_matrix.set_row(
+                connectivity_matrix.set_row(
                     e,
                     &SMatrix::<usize, 1, 4>::from_row_slice(&[e0, e1, e2, e3]),
                 );
             }
         }
         Lagrange2DMesh {
-            element_connectivity_matrix,
+            connectivity_matrix,
             node_coordinate_matrix,
             boundary_node_ids,
         }
@@ -105,7 +105,7 @@ impl Lagrange2DMesh {
 
 impl Mesh for Lagrange2DMesh {
     fn get_elements(&self) -> &DMatrix<usize> {
-        &self.element_connectivity_matrix
+        &self.connectivity_matrix
     }
 
     fn get_nodes(&self) -> &MatrixXx3<f64> {
@@ -113,7 +113,11 @@ impl Mesh for Lagrange2DMesh {
     }
 
     fn get_element_count(&self) -> usize {
-        self.element_connectivity_matrix.nrows()
+        self.connectivity_matrix.nrows()
+    }
+
+    fn get_node_count(&self) -> usize {
+        self.node_coordinate_matrix.nrows()
     }
 }
 
@@ -122,7 +126,7 @@ impl fmt::Display for Lagrange2DMesh {
         write!(
             f,
             "{:.2}\n{}\n{:?}",
-            self.node_coordinate_matrix, self.element_connectivity_matrix, self.boundary_node_ids
+            self.node_coordinate_matrix, self.connectivity_matrix, self.boundary_node_ids
         )
     }
 }

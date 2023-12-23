@@ -33,7 +33,7 @@ impl Cube8 {
     // 在每个高斯点上做个预计算
     fn gauss_point_calculate(&self, xi: f64, eta: f64, zeta: f64) -> GaussResult<8, 3> {
         // 3维8节点六面体等参元形函数
-        let shape_function_values = SMatrix::<f64, 8, 1>::from_column_slice(&[
+        let shp_val = SMatrix::<f64, 8, 1>::from_column_slice(&[
             (1.0 - xi) * (1.0 - eta) * (1.0 - zeta) / 8.0, // N1
             (1.0 + xi) * (1.0 - eta) * (1.0 - zeta) / 8.0, // N2
             (1.0 + xi) * (1.0 + eta) * (1.0 - zeta) / 8.0, // N3
@@ -50,7 +50,7 @@ impl Cube8 {
          *  第二列 \frac{\partial Ni}{\partial \eta}
          *  第三列 \frac{\partial Ni}{\partial \zeta}
          */
-        let mut gradient_matrix = SMatrix::<f64, 8, 3>::from_row_slice(&[
+        let mut shp_grad = SMatrix::<f64, 8, 3>::from_row_slice(&[
             // N1
             -(1.0 - eta) * (1.0 - zeta) / 8.0, // dN1/dxi
             -(1.0 - xi) * (1.0 - zeta) / 8.0,  // dN1/deta
@@ -91,7 +91,7 @@ impl Cube8 {
          * [dx_deta, dy_deta, dz_deta],
          * [dx_dzeta, dy_dzeta, dz_dzeta]]
          */
-        let J = gradient_matrix.transpose() * self.nodes_coordinates;
+        let J = shp_grad.transpose() * self.nodes_coordinates;
         let det_J = J.determinant();
 
         /*
@@ -102,11 +102,11 @@ impl Cube8 {
          */
         let inverse_J = J.try_inverse().unwrap(); // 逆矩阵
 
-        gradient_matrix = gradient_matrix * inverse_J.transpose();
+        shp_grad = shp_grad * inverse_J.transpose();
 
         GaussResult {
-            shape_function_values,
-            gradient_matrix,
+            shp_val,
+            shp_grad,
             det_J,
         }
     }
@@ -117,10 +117,10 @@ impl GeneralElement<8, 3> for Cube8 {
     fn update(
         &mut self,
         element_number: usize,                   // 单元编号, 即单元的全局索引
-        element_node_matrix: &DMatrix<usize>,    // 全局单元-节点编号矩阵, 每单元8节点
+        connectivity_matrix: &DMatrix<usize>,    // 全局单元-节点编号矩阵, 每单元8节点
         node_coordinate_matrix: &MatrixXx3<f64>, // 全局节点-坐标矩阵, 每节点3坐标
     ) {
-        element_node_matrix
+        connectivity_matrix
             .row(element_number)
             .iter()
             .enumerate()
@@ -199,31 +199,29 @@ impl StructureElement<6> for Cube8 {
             let zeta = row[3];
             let w = row[0];
             let GaussResult {
-                gradient_matrix,
-                det_J,
-                ..
+                shp_grad, det_J, ..
             } = self.gauss_point_calculate(xi, eta, zeta);
             let JxW = det_J * w;
             for i in 0..self.connectivity.len() {
-                B[(0, 0)] = gradient_matrix[(i, 0)]; // 矩阵分块乘法, 每次计算出3x3的矩阵, 然后组装到单元刚度矩阵的对应位置
-                B[(1, 1)] = gradient_matrix[(i, 1)];
-                B[(2, 2)] = gradient_matrix[(i, 2)];
-                B[(3, 0)] = gradient_matrix[(i, 1)];
-                B[(3, 1)] = gradient_matrix[(i, 0)];
-                B[(4, 1)] = gradient_matrix[(i, 2)];
-                B[(4, 2)] = gradient_matrix[(i, 1)];
-                B[(5, 0)] = gradient_matrix[(i, 2)];
-                B[(5, 2)] = gradient_matrix[(i, 0)];
+                B[(0, 0)] = shp_grad[(i, 0)]; // 矩阵分块乘法, 每次计算出3x3的矩阵, 然后组装到单元刚度矩阵的对应位置
+                B[(1, 1)] = shp_grad[(i, 1)];
+                B[(2, 2)] = shp_grad[(i, 2)];
+                B[(3, 0)] = shp_grad[(i, 1)];
+                B[(3, 1)] = shp_grad[(i, 0)];
+                B[(4, 1)] = shp_grad[(i, 2)];
+                B[(4, 2)] = shp_grad[(i, 1)];
+                B[(5, 0)] = shp_grad[(i, 2)];
+                B[(5, 2)] = shp_grad[(i, 0)];
                 for j in 0..self.connectivity.len() {
-                    Bt[(0, 0)] = gradient_matrix[(j, 0)];
-                    Bt[(0, 3)] = gradient_matrix[(j, 1)];
-                    Bt[(0, 5)] = gradient_matrix[(j, 2)];
-                    Bt[(1, 1)] = gradient_matrix[(j, 1)];
-                    Bt[(1, 3)] = gradient_matrix[(j, 0)];
-                    Bt[(1, 4)] = gradient_matrix[(j, 2)];
-                    Bt[(2, 2)] = gradient_matrix[(j, 2)];
-                    Bt[(2, 4)] = gradient_matrix[(j, 1)];
-                    Bt[(2, 5)] = gradient_matrix[(j, 0)];
+                    Bt[(0, 0)] = shp_grad[(j, 0)];
+                    Bt[(0, 3)] = shp_grad[(j, 1)];
+                    Bt[(0, 5)] = shp_grad[(j, 2)];
+                    Bt[(1, 1)] = shp_grad[(j, 1)];
+                    Bt[(1, 3)] = shp_grad[(j, 0)];
+                    Bt[(1, 4)] = shp_grad[(j, 2)];
+                    Bt[(2, 2)] = shp_grad[(j, 2)];
+                    Bt[(2, 4)] = shp_grad[(j, 1)];
+                    Bt[(2, 5)] = shp_grad[(j, 0)];
                     let C = Bt * mat.get_constitutive_matrix() * B;
                     // 这里要对高斯积分进行累加
                     self.K[(3 * i + 0, 3 * j + 0)] += C[(0, 0)] * JxW; // K_ux,ux

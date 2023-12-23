@@ -5,8 +5,8 @@ use nalgebra::{DMatrix, MatrixXx3};
 use crate::Mesh;
 
 pub struct Lagrange1DMesh {
-    element_connectivity_matrix: DMatrix<usize>, // 单元节点矩阵
-    node_coordinate_matrix: MatrixXx3<f64>,      // 节点坐标矩阵
+    connectivity_matrix: DMatrix<usize>,    // 单元节点矩阵
+    node_coordinate_matrix: MatrixXx3<f64>, // 节点坐标矩阵
 }
 
 impl Lagrange1DMesh {
@@ -15,7 +15,7 @@ impl Lagrange1DMesh {
             panic!("language 1d mesh error");
         }
 
-        let (order, element_connectivity_matrix) = match mesh_type {
+        let (order, connectivity_matrix) = match mesh_type {
             "edge2" => (1, DMatrix::from_fn(nx, 2, |r, c| r + c)),
             "edge3" => (
                 2,
@@ -37,7 +37,7 @@ impl Lagrange1DMesh {
             result
         });
         Lagrange1DMesh {
-            element_connectivity_matrix,
+            connectivity_matrix,
             node_coordinate_matrix,
         }
     }
@@ -45,7 +45,7 @@ impl Lagrange1DMesh {
 
 impl Mesh for Lagrange1DMesh {
     fn get_elements(&self) -> &DMatrix<usize> {
-        &self.element_connectivity_matrix
+        &self.connectivity_matrix
     }
 
     fn get_nodes(&self) -> &MatrixXx3<f64> {
@@ -53,7 +53,11 @@ impl Mesh for Lagrange1DMesh {
     }
 
     fn get_element_count(&self) -> usize {
-        self.element_connectivity_matrix.nrows()
+        self.connectivity_matrix.nrows()
+    }
+
+    fn get_node_count(&self) -> usize {
+        self.node_coordinate_matrix.nrows()
     }
 }
 
@@ -62,7 +66,7 @@ impl fmt::Display for Lagrange1DMesh {
         write!(
             f,
             "{:.2}\n{}",
-            self.node_coordinate_matrix, self.element_connectivity_matrix,
+            self.node_coordinate_matrix, self.connectivity_matrix,
         )
     }
 }

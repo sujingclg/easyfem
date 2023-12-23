@@ -37,14 +37,14 @@ impl Structure2DSolver {
     /// N 为材料本构矩阵的阶数, 一维N=1, 二维N=3, 三维N=6
     pub fn stiffness_calculate(
         &mut self,
-        element_node_matrix: &DMatrix<usize>,    // 单元节点矩阵
+        connectivity_matrix: &DMatrix<usize>,    // 单元节点矩阵
         node_coordinate_matrix: &MatrixXx3<f64>, // 节点坐标矩阵
         element: &mut (impl GeneralElement<4, 2> + StructureElement<3>),
         // materialsMap: &HashMap<usize, Box<dyn Material<3>>>,
         mat: &impl Material<3>,
     ) {
-        for element_number in 0..element_node_matrix.nrows() {
-            element.update(element_number, element_node_matrix, node_coordinate_matrix);
+        for element_number in 0..connectivity_matrix.nrows() {
+            element.update(element_number, connectivity_matrix, node_coordinate_matrix);
             element.structure_stiffness_calculate(mat);
             element.structure_assemble(&mut self.stiffness_matrix);
         }
