@@ -1,7 +1,10 @@
 pub mod base;
 
+// #[allow(non_snake_case)]
+// pub mod elements;
+
 #[allow(non_snake_case)]
-pub mod elements;
+pub mod base_elements;
 
 #[allow(non_snake_case)]
 pub mod materials;
@@ -9,6 +12,7 @@ pub mod materials;
 #[allow(non_snake_case)]
 pub mod solvers;
 
+mod gauss;
 mod helpers;
 
 pub fn run() {

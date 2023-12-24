@@ -2,7 +2,7 @@
 use nalgebra::{DMatrix, DVector, MatrixXx3};
 
 use crate::{
-    elements::{GeneralElement, StructureElement},
+    base_elements::{GeneralElement, StructureElement},
     materials::Material,
 };
 
@@ -38,14 +38,14 @@ impl Structure2DSolver {
         &mut self,
         connectivity_matrix: &DMatrix<usize>,    // 单元节点矩阵
         node_coordinate_matrix: &MatrixXx3<f64>, // 节点坐标矩阵
-        element: &mut (impl GeneralElement<4, 2> + StructureElement<3>),
+        element: &mut (impl GeneralElement + StructureElement<3>),
         // materialsMap: &HashMap<usize, Box<dyn Material<3>>>,
         mat: &impl Material<3>,
     ) {
         for element_number in 0..connectivity_matrix.nrows() {
             element.update(element_number, connectivity_matrix, node_coordinate_matrix);
             element.structure_stiffness_calculate(mat);
-            element.structure_assemble(&mut self.stiffness_matrix);
+            element.assemble(&mut self.stiffness_matrix, &mut self.force_vector);
         }
     }
 
@@ -106,7 +106,8 @@ mod tests {
     use nalgebra::SMatrix;
 
     use crate::{
-        elements::Quad4,
+        base_elements::Quad4,
+        gauss::GaussQuad,
         materials::{IsotropicLinearElastic2D, PlaneCondition::*},
     };
 
@@ -136,7 +137,7 @@ mod tests {
             })
         }
         let mut solver = Structure2DSolver::new(12);
-        let mut quad4 = Quad4::new(2, 2);
+        let mut quad4 = Quad4::new(2, GaussQuad::new(2));
         let mat = IsotropicLinearElastic2D::new(1.0e7, 1.0 / 3.0, PlaneStress, 0.1);
         solver.stiffness_calculate(mesh.get_elements(), mesh.get_nodes(), &mut quad4, &mat);
         solver.apply_boundary_conditions(&bcs);
