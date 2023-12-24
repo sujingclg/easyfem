@@ -6,11 +6,10 @@ use crate::{
     materials::Material,
 };
 
-/// 边界条件, 只能是力边界条件或位移边界条件(二选一), T为节点自由度数
-pub struct StructureBoundaryCondition<const T: usize> {
-    node_id: usize,
-    boundary_condition: [f64; T],
-    is_force: bool, // 是否是力边界条件
+/// 边界条件, 力边界条件或位移边界条件, T为节点自由度数
+pub enum StructureBoundaryCondition<const T: usize> {
+    Force { node_id: usize, values: [f64; T] },
+    Displacement { node_id: usize, values: [f64; T] },
 }
 
 pub trait StructureSolver {
@@ -54,22 +53,27 @@ impl Structure2DSolver {
         &mut self,
         boundary_conditions: &Vec<StructureBoundaryCondition<2>>,
     ) {
+        use StructureBoundaryCondition::*;
         let penalty = 1.0e20;
-        boundary_conditions.iter().for_each(|bc| {
-            let x = bc.node_id * 2;
-            let y = bc.node_id * 2 + 1;
-            if bc.is_force {
-                self.force_vector[x] = bc.boundary_condition[0];
-                self.force_vector[y] = bc.boundary_condition[1];
-            } else {
-                let k_xx = self.stiffness_matrix[(x, x)];
-                let k_yy = self.stiffness_matrix[(y, y)];
-                self.stiffness_matrix[(x, x)] = k_xx * penalty;
-                self.stiffness_matrix[(y, y)] = k_yy * penalty;
-                self.force_vector[x] = penalty * k_xx * bc.boundary_condition[0];
-                self.force_vector[y] = penalty * k_yy * bc.boundary_condition[1];
+        for bc in boundary_conditions {
+            match bc {
+                Force { node_id, values } => {
+                    self.force_vector
+                        .rows_mut(node_id * 2, 2)
+                        .copy_from_slice(values);
+                }
+                Displacement { node_id, values } => {
+                    let x = node_id * 2;
+                    let y = node_id * 2 + 1;
+                    let k_xx = self.stiffness_matrix[(x, x)];
+                    let k_yy = self.stiffness_matrix[(y, y)];
+                    self.stiffness_matrix[(x, x)] = k_xx * penalty;
+                    self.stiffness_matrix[(y, y)] = k_yy * penalty;
+                    self.force_vector[x] = penalty * k_xx * values[0];
+                    self.force_vector[y] = penalty * k_yy * values[1];
+                }
             }
-        });
+        }
     }
 
     pub fn solve(&mut self) {
@@ -103,10 +107,10 @@ mod tests {
 
     use crate::{
         elements::Quad4,
-        materials::{IsotropicLinearElastic2D, PlaneCondition},
+        materials::{IsotropicLinearElastic2D, PlaneCondition::*},
     };
 
-    use super::{Structure2DSolver, StructureBoundaryCondition};
+    use super::{Structure2DSolver, StructureBoundaryCondition::*};
 
     #[test]
     /// 曾攀 有限元分析基础教程 算例4.7.2
@@ -117,25 +121,23 @@ mod tests {
         let mut bcs = vec![];
         if let Some(leftnodes) = mesh.get_boundary_node_ids().get("left") {
             leftnodes.iter().for_each(|id| {
-                bcs.push(StructureBoundaryCondition {
+                bcs.push(Displacement {
                     node_id: *id,
-                    boundary_condition: [0.0, 0.0],
-                    is_force: false,
-                })
+                    values: [0.0, 0.0],
+                });
             })
         }
         if let Some(leftnodes) = mesh.get_boundary_node_ids().get("right") {
             leftnodes.iter().for_each(|id| {
-                bcs.push(StructureBoundaryCondition {
+                bcs.push(Force {
                     node_id: *id,
-                    boundary_condition: [0.0, -F / 2.0],
-                    is_force: true,
-                })
+                    values: [0.0, -F / 2.0],
+                });
             })
         }
         let mut solver = Structure2DSolver::new(12);
         let mut quad4 = Quad4::new(2, 2);
-        let mat = IsotropicLinearElastic2D::new(1.0e7, 1.0 / 3.0, PlaneCondition::PlaneStress, 0.1);
+        let mat = IsotropicLinearElastic2D::new(1.0e7, 1.0 / 3.0, PlaneStress, 0.1);
         solver.stiffness_calculate(mesh.get_elements(), mesh.get_nodes(), &mut quad4, &mat);
         solver.apply_boundary_conditions(&bcs);
         solver.solve();

@@ -37,8 +37,9 @@ pub struct IsotropicLinearElastic2D {
 
 impl IsotropicLinearElastic2D {
     pub fn new(E: f64, v: f64, condition: PlaneCondition, t: f64) -> Self {
+        use PlaneCondition::*;
         match condition {
-            PlaneCondition::PlaneStress => IsotropicLinearElastic2D {
+            PlaneStress => IsotropicLinearElastic2D {
                 constitutive_matrix: Matrix3::new(
                     1.0,
                     v,
@@ -53,7 +54,7 @@ impl IsotropicLinearElastic2D {
                     / (1.0 - v.powi(2))
                     * t,
             },
-            PlaneCondition::PlaneStrain => IsotropicLinearElastic2D {
+            PlaneStrain => IsotropicLinearElastic2D {
                 constitutive_matrix: Matrix3::new(
                     1.0 - v,
                     v,

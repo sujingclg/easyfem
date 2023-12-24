@@ -201,7 +201,7 @@ mod tests {
     use easyfem_mesh::{Lagrange2DMesh, Mesh};
     use nalgebra::SMatrix;
 
-    use crate::materials::{IsotropicLinearElastic2D, PlaneCondition};
+    use crate::materials::{IsotropicLinearElastic2D, PlaneCondition::*};
 
     use super::*;
 
@@ -212,7 +212,7 @@ mod tests {
         let mesh = Lagrange2DMesh::new(3.0, 5.0, 1, 2.0, 4.0, 1, "quad4");
         println!("{}", mesh);
         let mut quad4 = Quad4::new(2, 2);
-        let mat = IsotropicLinearElastic2D::new(3.0e7, 0.25, PlaneCondition::PlaneStress, 1.0);
+        let mat = IsotropicLinearElastic2D::new(3.0e7, 0.25, PlaneStress, 1.0);
         let mut stiffness_matrix = DMatrix::zeros(n_dofs, n_dofs);
         for element_number in 0..mesh.get_element_count() {
             quad4.update(element_number, mesh.get_elements(), mesh.get_nodes());
