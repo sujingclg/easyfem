@@ -114,7 +114,7 @@ mod tests {
             -0.2769, -0.6728, 0.0000, 0.0000, -0.0000, -0.0000, 0.0000, -0.0000, 0.0129, 0.3108,
             -0.7774, -0.0129, 0.3108, -0.7774,
         ]);
-        let err = 1e-3;
+        let err = 1e-4;
         if let Some(d) = displacement_vector {
             assert!((&d * 1.0e3).relative_eq(&answer, err, err));
             println!("{:.4}", &d * 1.0e3);

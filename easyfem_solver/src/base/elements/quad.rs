@@ -102,7 +102,7 @@ impl<const N: usize> GeneralElement<N, 2> for Quad<N> {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn poisson_quad4_test() {
+    fn quad4_test() {
         // TODO:
     }
 }

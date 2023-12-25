@@ -99,7 +99,7 @@ impl<const N: usize> GeneralElement<N, 1> for Edge<N> {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn poisson_edge2_test() {
+    fn edge2_test() {
         // TODO:
     }
 }
