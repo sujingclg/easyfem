@@ -128,19 +128,19 @@ impl Lagrange3DMesh {
 }
 
 impl Mesh for Lagrange3DMesh {
-    fn get_elements(&self) -> &DMatrix<usize> {
+    fn elements(&self) -> &DMatrix<usize> {
         &self.connectivity_matrix
     }
 
-    fn get_nodes(&self) -> &MatrixXx3<f64> {
+    fn nodes(&self) -> &MatrixXx3<f64> {
         &self.node_coordinate_matrix
     }
 
-    fn get_element_count(&self) -> usize {
+    fn element_count(&self) -> usize {
         self.connectivity_matrix.nrows()
     }
 
-    fn get_node_count(&self) -> usize {
+    fn node_count(&self) -> usize {
         self.node_coordinate_matrix.nrows()
     }
 }

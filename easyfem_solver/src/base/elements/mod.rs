@@ -15,6 +15,8 @@ use super::utils::flatten_vector;
 pub trait ElementBase<const N: usize, const D: usize> {
     fn node_dof(&self) -> usize;
 
+    fn node_count(&self) -> usize;
+
     fn connectivity(&self) -> &[usize; N];
     // fn connectivity_mut(&mut self) -> &mut [usize; N];
 

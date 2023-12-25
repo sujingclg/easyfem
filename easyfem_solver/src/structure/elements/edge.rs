@@ -9,17 +9,17 @@ use crate::{
 use super::StructureElement;
 
 impl StructureElement<1, 2, 1> for Edge2 {
-    fn structure_stiffness_calculate(&mut self, mat: &impl Material<1>, gauss: &Gauss) {
-        // TODO: 需要处理不是GaussEdge的情况
+    fn structure_stiffness_calc(&mut self, gauss: &Gauss, mat: &impl Material<1>) {
+        let node_count = self.node_count();
         if let Gauss::Edge(gauss_edge) = gauss {
-            for row in gauss_edge.get_gauss_matrix().row_iter() {
+            for row in gauss_edge.gauss_matrix().row_iter() {
                 let xi = row[1];
                 let w = row[0];
                 let gauss_result =
-                    gauss_edge.linear_shape_func_calc(&self.nodes_coordinates(), [xi]);
+                    gauss_edge.linear_shape_func_calc(self.nodes_coordinates(), [xi]);
                 let JxW = gauss_result.det_j * w;
-                for i in 0..self.connectivity().len() {
-                    for j in 0..self.connectivity().len() {
+                for i in 0..node_count {
+                    for j in 0..node_count {
                         // 这里要对高斯积分进行累加
                         self.K_mut()[(i, j)] += gauss_result.shp_grad[j]
                             * gauss_result.shp_grad[i]
@@ -28,21 +28,24 @@ impl StructureElement<1, 2, 1> for Edge2 {
                     }
                 }
             }
+        } else {
+            panic!("gauss input not match this element")
         }
     }
 }
 
 impl StructureElement<1, 3, 1> for Edge3 {
-    fn structure_stiffness_calculate(&mut self, mat: &impl Material<1>, gauss: &Gauss) {
+    fn structure_stiffness_calc(&mut self, gauss: &Gauss, mat: &impl Material<1>) {
+        let node_count = self.node_count();
         if let Gauss::Edge(gauss_edge) = gauss {
-            for row in gauss_edge.get_gauss_matrix().row_iter() {
+            for row in gauss_edge.gauss_matrix().row_iter() {
                 let xi = row[1];
                 let w = row[0];
                 let gauss_result =
-                    gauss_edge.square_shape_func_calc(&self.nodes_coordinates(), [xi]);
+                    gauss_edge.square_shape_func_calc(self.nodes_coordinates(), [xi]);
                 let JxW = gauss_result.det_j * w;
-                for i in 0..self.connectivity().len() {
-                    for j in 0..self.connectivity().len() {
+                for i in 0..node_count {
+                    for j in 0..node_count {
                         // 这里要对高斯积分进行累加
                         self.K_mut()[(i, j)] += gauss_result.shp_grad[j]
                             * gauss_result.shp_grad[i]
@@ -51,6 +54,8 @@ impl StructureElement<1, 3, 1> for Edge3 {
                     }
                 }
             }
+        } else {
+            panic!("gauss input not match this element")
         }
     }
 }
@@ -71,14 +76,14 @@ mod tests {
     fn structure_edge2_test() {
         let mesh = Lagrange1DMesh::new(0.0, 1.0, 5, "edge2");
         let mut edge2 = Edge2::new(1);
-        let n_dofs = mesh.get_node_count();
+        let n_dofs = mesh.node_count();
         let mut stiffness_matrix = DMatrix::zeros(n_dofs, n_dofs);
         let mut right_vector = DVector::zeros(n_dofs);
         let mat = IsotropicLinearElastic1D::new(1.0e9, 1.0);
         let gauss = Gauss::Edge(GaussEdge::new(2));
-        for element_number in 0..mesh.get_element_count() {
-            edge2.update(element_number, mesh.get_elements(), mesh.get_nodes());
-            edge2.structure_stiffness_calculate(&mat, &gauss);
+        for element_number in 0..mesh.element_count() {
+            edge2.update(element_number, mesh.elements(), mesh.nodes());
+            edge2.structure_stiffness_calc(&gauss, &mat);
             edge2.assemble(&mut stiffness_matrix, &mut right_vector);
         }
         println!("{:.3e}", stiffness_matrix);
@@ -96,14 +101,14 @@ mod tests {
     fn structure_edge3_test() {
         let mesh = Lagrange1DMesh::new(0.0, 1.0, 2, "edge3");
         let mut edge3 = Edge3::new(1);
-        let n_dofs = mesh.get_node_count();
+        let n_dofs = mesh.node_count();
         let mut stiffness_matrix = DMatrix::zeros(n_dofs, n_dofs);
         let mut right_vector = DVector::zeros(n_dofs);
         let mat = IsotropicLinearElastic1D::new(1.0, 1.0);
         let gauss = Gauss::Edge(GaussEdge::new(2));
-        for element_number in 0..mesh.get_element_count() {
-            edge3.update(element_number, mesh.get_elements(), mesh.get_nodes());
-            edge3.structure_stiffness_calculate(&mat, &gauss);
+        for element_number in 0..mesh.element_count() {
+            edge3.update(element_number, mesh.elements(), mesh.nodes());
+            edge3.structure_stiffness_calc(&gauss, &mat);
             edge3.assemble(&mut stiffness_matrix, &mut right_vector);
         }
         println!("{:.3}", stiffness_matrix);

@@ -14,7 +14,7 @@ use crate::{
 pub trait StructureElement<const O: usize, const N: usize, const D: usize>:
     ElementBase<N, D>
 {
-    fn structure_stiffness_calculate(&mut self, mat: &impl Material<O>, gauss: &Gauss);
+    fn structure_stiffness_calc(&mut self, gauss: &Gauss, mat: &impl Material<O>);
 
     // fn structure_assemble(&mut self, stiffness_matrix: &mut DMatrix<f64>);
 }

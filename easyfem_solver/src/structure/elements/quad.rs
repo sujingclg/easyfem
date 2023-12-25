@@ -11,30 +11,34 @@ use crate::{
 use super::StructureElement;
 
 impl StructureElement<3, 4, 2> for Quad4 {
-    fn structure_stiffness_calculate(&mut self, mat: &impl Material<3>, gauss: &Gauss) {
+    fn structure_stiffness_calc(&mut self, gauss: &Gauss, mat: &impl Material<3>) {
+        let node_count = self.node_count();
         if let Gauss::Quad(gauss_quad) = gauss {
             let mut B = Matrix3x2::zeros(); // 应变矩阵
             let mut Bt = Matrix2x3::zeros(); // 应变矩阵的转置
-            for row in gauss_quad.get_gauss_matrix().row_iter() {
+            for row in gauss_quad.gauss_matrix().row_iter() {
                 let xi = row[1];
                 let eta = row[2];
                 let w = row[0];
                 let GaussResult {
                     shp_grad, det_j, ..
-                } = gauss_quad.linear_shape_func_calc(&self.nodes_coordinates(), [xi, eta]);
+                } = gauss_quad.linear_shape_func_calc(self.nodes_coordinates(), [xi, eta]);
                 let JxW = det_j * w;
-                for i in 0..self.connectivity().len() {
+                for i in 0..node_count {
                     B[(0, 0)] = shp_grad[(i, 0)]; // 矩阵分块乘法, 每次计算出2x2的矩阵, 然后组装到单元刚度矩阵的对应位置
                     B[(1, 1)] = shp_grad[(i, 1)];
                     B[(2, 0)] = shp_grad[(i, 1)];
                     B[(2, 1)] = shp_grad[(i, 0)];
-                    for j in 0..self.connectivity().len() {
+                    for j in 0..node_count {
                         Bt[(0, 0)] = shp_grad[(j, 0)];
                         Bt[(0, 2)] = shp_grad[(j, 1)];
                         Bt[(1, 1)] = shp_grad[(j, 1)];
                         Bt[(1, 2)] = shp_grad[(j, 0)];
                         let C = Bt * mat.get_constitutive_matrix() * B;
                         // 这里要对高斯积分进行累加
+                        // for (r, c) in square_range(2) {
+                        //     self.K_mut()[(2 * i + r, 2 * j + c)] += C[(r, c)] * JxW;
+                        // }
                         self.K_mut()[(2 * i + 0, 2 * j + 0)] += C[(0, 0)] * JxW; // K_ux,ux
                         self.K_mut()[(2 * i + 0, 2 * j + 1)] += C[(0, 1)] * JxW; // K_ux,uy
                         self.K_mut()[(2 * i + 1, 2 * j + 0)] += C[(1, 0)] * JxW; // K_uy,ux
@@ -43,29 +47,32 @@ impl StructureElement<3, 4, 2> for Quad4 {
                     }
                 }
             }
+        } else {
+            panic!("gauss input not match this element")
         }
     }
 }
 
 impl StructureElement<3, 9, 2> for Quad9 {
-    fn structure_stiffness_calculate(&mut self, mat: &impl Material<3>, gauss: &Gauss) {
+    fn structure_stiffness_calc(&mut self, gauss: &Gauss, mat: &impl Material<3>) {
+        let node_count = self.node_count();
         if let Gauss::Quad(gauss_quad) = gauss {
             let mut B = Matrix3x2::zeros(); // 应变矩阵
             let mut Bt = Matrix2x3::zeros(); // 应变矩阵的转置
-            for row in gauss_quad.get_gauss_matrix().row_iter() {
+            for row in gauss_quad.gauss_matrix().row_iter() {
                 let xi = row[1];
                 let eta = row[2];
                 let w = row[0];
                 let GaussResult {
                     shp_grad, det_j, ..
-                } = gauss_quad.square_shape_func_calc(&self.nodes_coordinates(), [xi, eta]);
+                } = gauss_quad.square_shape_func_calc(self.nodes_coordinates(), [xi, eta]);
                 let JxW = det_j * w;
-                for i in 0..self.connectivity().len() {
+                for i in 0..node_count {
                     B[(0, 0)] = shp_grad[(i, 0)]; // 矩阵分块乘法, 每次计算出2x2的矩阵, 然后组装到单元刚度矩阵的对应位置
                     B[(1, 1)] = shp_grad[(i, 1)];
                     B[(2, 0)] = shp_grad[(i, 1)];
                     B[(2, 1)] = shp_grad[(i, 0)];
-                    for j in 0..self.connectivity().len() {
+                    for j in 0..node_count {
                         // println!("i = {i}, j = {j}");
                         Bt[(0, 0)] = shp_grad[(j, 0)];
                         Bt[(0, 2)] = shp_grad[(j, 1)];
@@ -81,6 +88,8 @@ impl StructureElement<3, 9, 2> for Quad9 {
                     }
                 }
             }
+        } else {
+            panic!("gauss input not match this element")
         }
     }
 }
@@ -102,15 +111,15 @@ mod tests {
     fn structure_quad4_test() {
         let mesh = Lagrange2DMesh::new(3.0, 5.0, 1, 2.0, 4.0, 1, "quad4");
         println!("{}", mesh);
-        let n_dofs = mesh.get_node_count() * 2;
+        let n_dofs = mesh.node_count() * 2;
         let mut quad4 = Quad4::new(2);
         let mut stiffness_matrix = DMatrix::zeros(n_dofs, n_dofs);
         let mut right_vector = DVector::zeros(n_dofs);
         let mat = IsotropicLinearElastic2D::new(3.0e7, 0.25, PlaneStress, 1.0);
         let gauss = Gauss::Quad(GaussQuad::new(2));
-        for element_number in 0..mesh.get_element_count() {
-            quad4.update(element_number, mesh.get_elements(), mesh.get_nodes());
-            quad4.structure_stiffness_calculate(&mat, &gauss);
+        for element_number in 0..mesh.element_count() {
+            quad4.update(element_number, mesh.elements(), mesh.nodes());
+            quad4.structure_stiffness_calc(&gauss, &mat);
             quad4.assemble(&mut stiffness_matrix, &mut right_vector);
         }
         println!("stiffness_matrix = {:.3e}", stiffness_matrix);
@@ -154,7 +163,7 @@ mod tests {
                 &connectivity_matrix,
                 &node_coordinate_matrix,
             );
-            quad9.structure_stiffness_calculate(&mat, &gauss);
+            quad9.structure_stiffness_calc(&gauss, &mat);
             quad9.assemble(&mut stiffness_matrix, &mut right_vector);
         }
         println!("stiffness_matrix = {:.3e}", stiffness_matrix);

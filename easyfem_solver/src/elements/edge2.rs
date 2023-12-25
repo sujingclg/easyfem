@@ -181,8 +181,8 @@ mod tests {
         let mut edge2 = Edge2::new(2, 1);
         let mut stiffness_matrix = DMatrix::zeros(6, 6);
         let mat = IsotropicLinearElastic1D::new(1.0e9, 1.0);
-        for element_number in 0..mesh.get_element_count() {
-            edge2.update(element_number, mesh.get_elements(), mesh.get_nodes());
+        for element_number in 0..mesh.element_count() {
+            edge2.update(element_number, mesh.elements(), mesh.nodes());
             edge2.structure_stiffness_calculate(&mat);
             edge2.structure_assemble(&mut stiffness_matrix);
         }
@@ -201,7 +201,7 @@ mod tests {
     fn poisson_test_1() {
         let mesh = Lagrange1DMesh::new(0.0, 1.0, 10, "edge2");
         let mut edge2 = Edge2::new(2, 1);
-        let n_dofs = mesh.get_node_count();
+        let n_dofs = mesh.node_count();
         let mut stiffness_matrix = DMatrix::zeros(n_dofs, n_dofs);
         let mut right_vector = DVector::zeros(n_dofs);
 
@@ -215,8 +215,8 @@ mod tests {
             DVector::from_element(1, 200.0 * shp_val[i])
         }
 
-        for element_number in 0..mesh.get_element_count() {
-            edge2.update(element_number, mesh.get_elements(), mesh.get_nodes());
+        for element_number in 0..mesh.element_count() {
+            edge2.update(element_number, mesh.elements(), mesh.nodes());
             edge2.general_stiffness_calculate(kij_operator, fi_operator);
             edge2.general_assemble(&mut stiffness_matrix, &mut right_vector);
         }

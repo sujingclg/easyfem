@@ -11,20 +11,21 @@ use crate::{
 use super::StructureElement;
 
 impl StructureElement<6, 8, 3> for Cube8 {
-    fn structure_stiffness_calculate(&mut self, mat: &impl Material<6>, gauss: &Gauss) {
+    fn structure_stiffness_calc(&mut self, gauss: &Gauss, mat: &impl Material<6>) {
+        let node_count = self.node_count();
         if let Gauss::Cube(gauss_cube) = gauss {
             let mut B = Matrix6x3::zeros(); // 应变矩阵
             let mut Bt = Matrix3x6::zeros(); // 应变矩阵的转置
-            for row in gauss_cube.get_gauss_matrix().row_iter() {
+            for row in gauss_cube.gauss_matrix().row_iter() {
                 let xi = row[1];
                 let eta = row[2];
                 let zeta = row[3];
                 let w = row[0];
                 let GaussResult {
                     shp_grad, det_j, ..
-                } = gauss_cube.linear_shape_func_calc(&self.nodes_coordinates(), [xi, eta, zeta]);
+                } = gauss_cube.linear_shape_func_calc(self.nodes_coordinates(), [xi, eta, zeta]);
                 let JxW = det_j * w;
-                for i in 0..self.connectivity().len() {
+                for i in 0..node_count {
                     B[(0, 0)] = shp_grad[(i, 0)]; // 矩阵分块乘法, 每次计算出3x3的矩阵, 然后组装到单元刚度矩阵的对应位置
                     B[(1, 1)] = shp_grad[(i, 1)];
                     B[(2, 2)] = shp_grad[(i, 2)];
@@ -34,7 +35,7 @@ impl StructureElement<6, 8, 3> for Cube8 {
                     B[(4, 2)] = shp_grad[(i, 1)];
                     B[(5, 0)] = shp_grad[(i, 2)];
                     B[(5, 2)] = shp_grad[(i, 0)];
-                    for j in 0..self.connectivity().len() {
+                    for j in 0..node_count {
                         Bt[(0, 0)] = shp_grad[(j, 0)];
                         Bt[(0, 3)] = shp_grad[(j, 1)];
                         Bt[(0, 5)] = shp_grad[(j, 2)];
@@ -59,6 +60,8 @@ impl StructureElement<6, 8, 3> for Cube8 {
                     }
                 }
             }
+        } else {
+            panic!("gauss input not match this element")
         }
     }
 }
@@ -85,9 +88,9 @@ mod tests {
         let mut right_vector = DVector::zeros(n_dofs);
         let mat = IsotropicLinearElastic3D::new(1.0e10, 0.25);
         let gauss = Gauss::Cube(GaussCube::new(2));
-        for element_number in 0..mesh.get_element_count() {
-            cube8.update(element_number, mesh.get_elements(), mesh.get_nodes());
-            cube8.structure_stiffness_calculate(&mat, &gauss);
+        for element_number in 0..mesh.element_count() {
+            cube8.update(element_number, mesh.elements(), mesh.nodes());
+            cube8.structure_stiffness_calc(&gauss, &mat);
             cube8.assemble(&mut stiffness_matrix, &mut right_vector);
         }
         let penalty = 1.0e20;

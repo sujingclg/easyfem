@@ -10,19 +10,13 @@ mod lagrange_3d_mesh;
 pub use lagrange_3d_mesh::Lagrange3DMesh;
 
 pub trait Mesh {
-    fn get_elements(&self) -> &DMatrix<usize>;
+    fn elements(&self) -> &DMatrix<usize>;
 
-    fn get_nodes(&self) -> &MatrixXx3<f64>;
+    fn nodes(&self) -> &MatrixXx3<f64>;
 
-    fn get_element_count(&self) -> usize;
+    fn element_count(&self) -> usize;
 
-    fn get_node_count(&self) -> usize;
-}
-
-/// DOF -> degree 节点自由度
-pub trait Mesh2<const DOF: usize> {
-    fn get_nodes(&self);
-    fn get_elements(&self);
+    fn node_count(&self) -> usize;
 }
 
 // pub fn add(left: usize, right: usize) -> usize {

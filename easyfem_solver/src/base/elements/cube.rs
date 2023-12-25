@@ -29,6 +29,10 @@ impl<const N: usize> ElementBase<N, 3> for Cube<N> {
         self.node_dof
     }
 
+    fn node_count(&self) -> usize {
+        self.connectivity.len()
+    }
+
     fn connectivity(&self) -> &[usize; N] {
         &self.connectivity
     }

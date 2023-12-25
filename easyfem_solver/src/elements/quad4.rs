@@ -214,8 +214,8 @@ mod tests {
         let mut quad4 = Quad4::new(2, 2);
         let mat = IsotropicLinearElastic2D::new(3.0e7, 0.25, PlaneStress, 1.0);
         let mut stiffness_matrix = DMatrix::zeros(n_dofs, n_dofs);
-        for element_number in 0..mesh.get_element_count() {
-            quad4.update(element_number, mesh.get_elements(), mesh.get_nodes());
+        for element_number in 0..mesh.element_count() {
+            quad4.update(element_number, mesh.elements(), mesh.nodes());
             quad4.structure_stiffness_calculate(&mat);
             quad4.structure_assemble(&mut stiffness_matrix);
         }
@@ -238,11 +238,11 @@ mod tests {
     fn poisson_test_1() {
         let mesh = Lagrange2DMesh::new(0.0, 1.0, 5, 0.0, 1.0, 5, "quad4");
         let mut quad4 = Quad4::new(2, 1);
-        let n_dofs = mesh.get_node_count();
+        let n_dofs = mesh.node_count();
         let mut stiffness_matrix = DMatrix::zeros(n_dofs, n_dofs);
         let mut right_vector = DVector::zeros(n_dofs);
-        for element_number in 0..mesh.get_element_count() {
-            quad4.update(element_number, mesh.get_elements(), mesh.get_nodes());
+        for element_number in 0..mesh.element_count() {
+            quad4.update(element_number, mesh.elements(), mesh.nodes());
             quad4.general_stiffness_calculate(
                 |i, j, gauss_result| {
                     let GaussResult { shp_grad, .. } = gauss_result;

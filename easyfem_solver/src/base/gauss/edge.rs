@@ -14,7 +14,7 @@ impl GaussEdge {
         }
     }
 
-    pub fn get_gauss_matrix(&self) -> &MatrixXx2<f64> {
+    pub fn gauss_matrix(&self) -> &MatrixXx2<f64> {
         &self.gauss_matrix
     }
 

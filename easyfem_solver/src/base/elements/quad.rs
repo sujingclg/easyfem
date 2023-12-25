@@ -45,6 +45,10 @@ impl<const N: usize> ElementBase<N, 2> for Quad<N> {
         self.node_dof
     }
 
+    fn node_count(&self) -> usize {
+        self.connectivity.len()
+    }
+
     fn connectivity(&self) -> &[usize; N] {
         &self.connectivity
     }

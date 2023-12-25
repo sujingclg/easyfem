@@ -28,7 +28,7 @@ impl GmshReader {
         if let Some(Ok(line)) = lines_iter.next() {
             let s: Vec<&str> = line.trim().split_whitespace().collect();
             println!("{:?}", s);
-            // println!("{:?}", mesh.get_nodes());
+            // println!("{:?}", mesh.nodes());
             // mesh.set_version(float(s[0]));
             // mesh.set_ascii(int(s[1]) == 0);
             // mesh.set_precision(int(s[2]));
@@ -61,11 +61,11 @@ impl GmshMesh {
 }
 
 // impl Mesh for GmshMesh {
-//     fn get_nodes(&self) {
+//     fn nodes(&self) {
 //         //
 //     }
 
-//     fn get_elements(&self) {
+//     fn elements(&self) {
 //         //
 //     }
 // }

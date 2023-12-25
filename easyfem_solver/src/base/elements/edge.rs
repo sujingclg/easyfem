@@ -43,6 +43,10 @@ impl<const N: usize> ElementBase<N, 1> for Edge<N> {
         self.node_dof
     }
 
+    fn node_count(&self) -> usize {
+        self.connectivity.len()
+    }
+
     fn connectivity(&self) -> &[usize; N] {
         &self.connectivity
     }

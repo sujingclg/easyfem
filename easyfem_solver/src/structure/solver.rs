@@ -49,7 +49,7 @@ impl Structure2DSolver {
         let gauss_quad = Gauss::Quad(GaussQuad::new(2));
         for element_number in 0..connectivity_matrix.nrows() {
             element.update(element_number, connectivity_matrix, node_coordinate_matrix);
-            element.structure_stiffness_calculate(mat, &gauss_quad);
+            element.structure_stiffness_calc(&gauss_quad, mat);
             element.assemble(&mut self.stiffness_matrix, &mut self.force_vector);
         }
     }
@@ -143,7 +143,7 @@ mod tests {
         let mut solver = Structure2DSolver::new(12);
         let mut quad4 = Quad4::new(2);
         let mat = IsotropicLinearElastic2D::new(1.0e7, 1.0 / 3.0, PlaneStress, 0.1);
-        solver.stiffness_calculate(mesh.get_elements(), mesh.get_nodes(), &mut quad4, &mat);
+        solver.stiffness_calculate(mesh.elements(), mesh.nodes(), &mut quad4, &mat);
         solver.apply_boundary_conditions(&bcs);
         solver.solve();
         let answer = SMatrix::<f64, 12, 1>::from_row_slice(&[

@@ -2,6 +2,7 @@ use std::{
     fs::File,
     io::{self, BufRead},
     path::Path,
+    usize,
 };
 
 pub fn read_lines<P>(file_path: P) -> io::Result<io::Lines<io::BufReader<File>>>
@@ -25,6 +26,16 @@ pub fn flatten_vector(v: &[usize], repeat_times: usize) -> Vec<usize> {
         .collect()
 }
 
+pub fn square_range(n: usize) -> Vec<(usize, usize)> {
+    let mut vec = Vec::new();
+    for i in 0..n {
+        for j in 0..n {
+            vec.push((i, j));
+        }
+    }
+    vec
+}
+
 #[cfg(test)]
 mod tests {
 
@@ -43,6 +54,31 @@ mod tests {
         assert_eq!(
             flattened_3,
             [30, 31, 32, 60, 61, 62, 90, 91, 92, 120, 121, 122]
+        );
+    }
+
+    #[test]
+    fn square_range_test() {
+        let result = square_range(1);
+        assert_eq!(result, [(0, 0)]);
+
+        let result = square_range(2);
+        assert_eq!(result, [(0, 0), (0, 1), (1, 0), (1, 1)]);
+
+        let result = square_range(3);
+        assert_eq!(
+            result,
+            [
+                (0, 0),
+                (0, 1),
+                (0, 2),
+                (1, 0),
+                (1, 1),
+                (1, 2),
+                (2, 0),
+                (2, 1),
+                (2, 2)
+            ]
         );
     }
 }
