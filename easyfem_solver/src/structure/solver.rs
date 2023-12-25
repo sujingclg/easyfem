@@ -2,9 +2,14 @@
 use nalgebra::{DMatrix, DVector, MatrixXx3};
 
 use crate::{
-    base_elements::{GeneralElement, StructureElement},
+    base::{
+        elements::GeneralElement,
+        gauss::{Gauss, GaussQuad},
+    },
     materials::Material,
 };
+
+use super::elements::StructureElement;
 
 /// 边界条件, 力边界条件或位移边界条件, T为节点自由度数
 pub enum StructureBoundaryCondition<const T: usize> {
@@ -33,18 +38,18 @@ impl Structure2DSolver {
         }
     }
 
-    /// N 为材料本构矩阵的阶数, 一维N=1, 二维N=3, 三维N=6
     pub fn stiffness_calculate(
         &mut self,
         connectivity_matrix: &DMatrix<usize>,    // 单元节点矩阵
         node_coordinate_matrix: &MatrixXx3<f64>, // 节点坐标矩阵
-        element: &mut (impl GeneralElement + StructureElement<3>),
+        element: &mut (impl GeneralElement<4, 2> + StructureElement<3, 4, 2>),
         // materialsMap: &HashMap<usize, Box<dyn Material<3>>>,
         mat: &impl Material<3>,
     ) {
+        let gauss_quad = Gauss::Quad(GaussQuad::new(2));
         for element_number in 0..connectivity_matrix.nrows() {
             element.update(element_number, connectivity_matrix, node_coordinate_matrix);
-            element.structure_stiffness_calculate(mat);
+            element.structure_stiffness_calculate(mat, &gauss_quad);
             element.assemble(&mut self.stiffness_matrix, &mut self.force_vector);
         }
     }
@@ -78,11 +83,11 @@ impl Structure2DSolver {
 
     pub fn solve(&mut self) {
         // TODO: 使用 sprs 库中提供的 CG 求解器来解决稀疏对称对角矩阵的线性方程组
-        let K = self.stiffness_matrix.clone();
+        let stiffness_matrix = self.stiffness_matrix.clone();
         // if let Some(A) = K.cholesky() {
         //     self.displacement_vector = Some(A.solve(&self.load_vector));
         // }
-        self.displacement_vector = K.lu().solve(&self.force_vector);
+        self.displacement_vector = stiffness_matrix.lu().solve(&self.force_vector);
     }
 
     pub fn display_stiffness_matrix(&self) {
@@ -106,8 +111,7 @@ mod tests {
     use nalgebra::SMatrix;
 
     use crate::{
-        base_elements::Quad4,
-        gauss::GaussQuad,
+        base::elements::Quad4,
         materials::{IsotropicLinearElastic2D, PlaneCondition::*},
     };
 
@@ -116,7 +120,7 @@ mod tests {
     #[test]
     /// 曾攀 有限元分析基础教程 算例4.7.2
     fn structure_2d_test_1() {
-        let F = 1.0e5;
+        let f = 1.0e5;
         let mesh = Lagrange2DMesh::new(0.0, 2.0, 2, 0.0, 1.0, 1, "quad4");
         println!("{}", mesh);
         let mut bcs = vec![];
@@ -132,12 +136,12 @@ mod tests {
             leftnodes.iter().for_each(|id| {
                 bcs.push(Force {
                     node_id: *id,
-                    values: [0.0, -F / 2.0],
+                    values: [0.0, -f / 2.0],
                 });
             })
         }
         let mut solver = Structure2DSolver::new(12);
-        let mut quad4 = Quad4::new(2, GaussQuad::new(2));
+        let mut quad4 = Quad4::new(2);
         let mat = IsotropicLinearElastic2D::new(1.0e7, 1.0 / 3.0, PlaneStress, 0.1);
         solver.stiffness_calculate(mesh.get_elements(), mesh.get_nodes(), &mut quad4, &mat);
         solver.apply_boundary_conditions(&bcs);

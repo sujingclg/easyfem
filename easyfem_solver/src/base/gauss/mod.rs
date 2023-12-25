@@ -17,3 +17,9 @@ pub struct GaussResult<const N: usize, const D: usize> {
     pub shp_grad: SMatrix<f64, N, D>, // shape function gradient matrix
     pub det_j: f64,                   // determinant of jacob matrix
 }
+
+pub enum Gauss {
+    Edge(GaussEdge),
+    Quad(GaussQuad),
+    Cube(GaussCube),
+}
