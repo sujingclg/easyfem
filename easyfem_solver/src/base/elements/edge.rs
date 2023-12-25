@@ -4,6 +4,7 @@ use super::{ElementBase, GeneralElement};
 
 pub type Edge2 = Edge<2>;
 pub type Edge3 = Edge<3>;
+pub type Edge4 = Edge<4>;
 
 /// N -> 单元节点个数
 pub struct Edge<const N: usize> {
@@ -34,6 +35,18 @@ impl Edge3 {
             nodes_coordinates: SMatrix::zeros(),
             K: DMatrix::zeros(3 * node_dof, 3 * node_dof),
             F: DVector::zeros(3 * node_dof),
+        }
+    }
+}
+
+impl Edge4 {
+    pub fn new(node_dof: usize) -> Self {
+        Edge {
+            node_dof,
+            connectivity: [0; 4],
+            nodes_coordinates: SMatrix::zeros(),
+            K: DMatrix::zeros(4 * node_dof, 4 * node_dof),
+            F: DVector::zeros(4 * node_dof),
         }
     }
 }

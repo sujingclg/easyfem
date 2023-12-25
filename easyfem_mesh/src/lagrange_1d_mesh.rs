@@ -21,11 +21,23 @@ impl Lagrange1DMesh {
                 2,
                 DMatrix::from_fn(nx, 3, |r, c| {
                     if c == 0 {
-                        r * 2 + c
+                        r * 2
                     } else if c == 1 {
-                        r * 2 + c + 1
+                        r * 2 + 2
                     } else {
                         r * 2 + c - 1
+                    }
+                }),
+            ),
+            "edge4" => (
+                3,
+                DMatrix::from_fn(nx, 4, |r, c| {
+                    if c == 0 {
+                        r * 3
+                    } else if c == 1 {
+                        r * 3 + 3
+                    } else {
+                        r * 3 + c - 1
                     }
                 }),
             ),
@@ -76,14 +88,20 @@ mod tests {
     use super::*;
 
     #[test]
-    fn edge2_test_1() {
+    fn edge2_test() {
         let mesh = Lagrange1DMesh::new(0.0, 1.0, 5, "edge2");
         println!("{}", mesh);
     }
 
     #[test]
-    fn edge3_test_2() {
+    fn edge3_test() {
         let mesh = Lagrange1DMesh::new(0.0, 1.0, 2, "edge3");
+        println!("{}", mesh);
+    }
+
+    #[test]
+    fn edge4_test() {
+        let mesh = Lagrange1DMesh::new(0.0, 1.8, 3, "edge4");
         println!("{}", mesh);
     }
 }

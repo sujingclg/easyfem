@@ -7,7 +7,3 @@ pub mod poisson;
 pub mod structure;
 
 mod helpers;
-
-pub fn run() {
-    println!("run lib");
-}
