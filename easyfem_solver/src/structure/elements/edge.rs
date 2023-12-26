@@ -8,7 +8,7 @@ use crate::{
 
 use super::StructureElement;
 
-impl StructureElement<1, 2, 1> for Edge2 {
+impl StructureElement<1, 2> for Edge2 {
     fn structure_stiffness_calc(&mut self, gauss: &Gauss, mat: &impl Material<1>) {
         let node_count = self.node_count();
         if let Gauss::Edge(gauss_edge) = gauss {
@@ -34,7 +34,7 @@ impl StructureElement<1, 2, 1> for Edge2 {
     }
 }
 
-impl StructureElement<1, 3, 1> for Edge3 {
+impl StructureElement<1, 3> for Edge3 {
     fn structure_stiffness_calc(&mut self, gauss: &Gauss, mat: &impl Material<1>) {
         let node_count = self.node_count();
         if let Gauss::Edge(gauss_edge) = gauss {

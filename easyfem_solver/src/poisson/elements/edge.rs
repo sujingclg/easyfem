@@ -5,7 +5,7 @@ use crate::base::{
 
 use super::PoissonElement;
 
-impl PoissonElement<2, 1> for Edge2 {
+impl PoissonElement<2> for Edge2 {
     fn poisson_stiffness_calc(&mut self, gauss: &Gauss, f: f64) {
         // let node_dof = self.node_dof();
         let node_count = self.node_count();

@@ -10,7 +10,7 @@ use crate::{
 
 use super::StructureElement;
 
-impl StructureElement<6, 8, 3> for Cube8 {
+impl StructureElement<6, 8> for Cube8 {
     fn structure_stiffness_calc(&mut self, gauss: &Gauss, mat: &impl Material<6>) {
         let node_count = self.node_count();
         if let Gauss::Cube(gauss_cube) = gauss {

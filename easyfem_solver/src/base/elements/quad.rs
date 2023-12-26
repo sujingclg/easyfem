@@ -40,7 +40,9 @@ impl Quad<9> {
     }
 }
 
-impl<const N: usize> ElementBase<N, 2> for Quad<N> {
+impl<const N: usize> ElementBase<N> for Quad<N> {
+    type CoordMatrix = SMatrix<f64, N, 2>;
+
     fn node_dof(&self) -> usize {
         self.node_dof
     }
@@ -57,7 +59,7 @@ impl<const N: usize> ElementBase<N, 2> for Quad<N> {
     //     &mut self.connectivity
     // }
 
-    fn nodes_coordinates(&self) -> &SMatrix<f64, N, 2> {
+    fn nodes_coordinates(&self) -> &Self::CoordMatrix {
         &self.nodes_coordinates
     }
 
@@ -74,7 +76,7 @@ impl<const N: usize> ElementBase<N, 2> for Quad<N> {
     }
 }
 
-impl<const N: usize> GeneralElement<N, 2> for Quad<N> {
+impl<const N: usize> GeneralElement<N> for Quad<N> {
     fn update(
         &mut self,
         element_number: usize,                // 单元编号, 即单元的全局索引

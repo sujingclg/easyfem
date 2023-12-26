@@ -10,7 +10,7 @@ use crate::{
 
 use super::StructureElement;
 
-impl StructureElement<3, 4, 2> for Quad4 {
+impl StructureElement<3, 4> for Quad4 {
     fn structure_stiffness_calc(&mut self, gauss: &Gauss, mat: &impl Material<3>) {
         let node_count = self.node_count();
         if let Gauss::Quad(gauss_quad) = gauss {
@@ -53,7 +53,7 @@ impl StructureElement<3, 4, 2> for Quad4 {
     }
 }
 
-impl StructureElement<3, 9, 2> for Quad9 {
+impl StructureElement<3, 9> for Quad9 {
     fn structure_stiffness_calc(&mut self, gauss: &Gauss, mat: &impl Material<3>) {
         let node_count = self.node_count();
         if let Gauss::Quad(gauss_quad) = gauss {
