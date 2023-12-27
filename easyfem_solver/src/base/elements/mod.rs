@@ -32,6 +32,11 @@ pub trait ElementBase<const N: usize> {
 
 /// N -> 单元节点个数
 pub trait GeneralElement<const N: usize>: ElementBase<N> {
+    /// 从局部 connectivity 的索引拿到全局索引
+    fn global_node_id(&self, idx: usize) -> usize {
+        self.connectivity()[idx]
+    }
+
     fn update(
         &mut self,
         element_number: usize,                // 单元编号, 即单元的全局索引

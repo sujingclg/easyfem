@@ -8,7 +8,7 @@ use crate::{
 };
 
 /// 用于力学结构计算的单元
-/// O -> (Order)为材料本构矩阵的阶数, 一维O=1, 二维O=3, 三维O=6 TODO: 用关联类型处理掉Order
+/// O -> (Order)为材料本构矩阵的阶数, 一维O=1, 二维O=3, 三维O=6
 /// N -> 单元节点个数
 /// D -> 坐标系维度
 pub trait StructureElement<const O: usize, const N: usize, const D: usize>: ElementBase<N> {
