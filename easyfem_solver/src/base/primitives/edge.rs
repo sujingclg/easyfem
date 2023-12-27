@@ -1,31 +1,58 @@
 use nalgebra::{DMatrix, DVector, MatrixXx3, SMatrix};
 
-use super::{ElementBase, GeneralElement};
+use super::{GeneralElement, PrimitiveBase};
 
-pub type Cube8 = Cube<8>;
+pub type Edge2 = Edge<2>;
+pub type Edge3 = Edge<3>;
+pub type Edge4 = Edge<4>;
 
-pub struct Cube<const N: usize> {
-    node_dof: usize,                       // 节点自由度 结构分析为3
+/// N -> 单元节点个数
+pub struct Edge<const N: usize> {
+    node_dof: usize,                       // 节点自由度
     connectivity: [usize; N],              // 单元的节点序号数组
-    nodes_coordinates: SMatrix<f64, N, 3>, // 单元节点的全局坐标数组, 每单元8节点, 每节点3坐标
+    nodes_coordinates: SMatrix<f64, N, 1>, // 单元节点的全局坐标数组, 每单元2节点, 每节点1坐标
     K: DMatrix<f64>,                       // 单元刚度矩阵
     F: DVector<f64>,                       // 右端向量
 }
 
-impl Cube<8> {
+impl Edge2 {
     pub fn new(node_dof: usize) -> Self {
-        Cube {
+        Edge {
             node_dof,
-            connectivity: [0; 8],
+            connectivity: [0, 0],
             nodes_coordinates: SMatrix::zeros(),
-            K: DMatrix::zeros(8 * node_dof, 8 * node_dof),
-            F: DVector::zeros(8 * node_dof),
+            K: DMatrix::zeros(2 * node_dof, 2 * node_dof),
+            F: DVector::zeros(2 * node_dof),
         }
     }
 }
 
-impl<const N: usize> ElementBase<N> for Cube<N> {
-    type CoordMatrix = SMatrix<f64, N, 3>;
+impl Edge3 {
+    pub fn new(node_dof: usize) -> Self {
+        Edge {
+            node_dof,
+            connectivity: [0; 3],
+            nodes_coordinates: SMatrix::zeros(),
+            K: DMatrix::zeros(3 * node_dof, 3 * node_dof),
+            F: DVector::zeros(3 * node_dof),
+        }
+    }
+}
+
+impl Edge4 {
+    pub fn new(node_dof: usize) -> Self {
+        Edge {
+            node_dof,
+            connectivity: [0; 4],
+            nodes_coordinates: SMatrix::zeros(),
+            K: DMatrix::zeros(4 * node_dof, 4 * node_dof),
+            F: DVector::zeros(4 * node_dof),
+        }
+    }
+}
+
+impl<const N: usize> PrimitiveBase<N> for Edge<N> {
+    type CoordMatrix = SMatrix<f64, N, 1>;
 
     fn node_dof(&self) -> usize {
         self.node_dof
@@ -46,8 +73,7 @@ impl<const N: usize> ElementBase<N> for Cube<N> {
     fn nodes_coordinates(&self) -> &Self::CoordMatrix {
         &self.nodes_coordinates
     }
-
-    // fn nodes_coordinates_mut(&mut self) -> &mut SMatrix<f64, N, 3> {
+    // fn nodes_coordinates_mut(&mut self) -> &mut SMatrix<f64, N, 1> {
     //     &mut self.nodes_coordinates
     // }
 
@@ -60,7 +86,7 @@ impl<const N: usize> ElementBase<N> for Cube<N> {
     }
 }
 
-impl<const N: usize> GeneralElement<N> for Cube<N> {
+impl<const N: usize> GeneralElement<N> for Edge<N> {
     fn update(
         &mut self,
         element_number: usize,                // 单元编号, 即单元的全局索引
@@ -80,10 +106,15 @@ impl<const N: usize> GeneralElement<N> for Cube<N> {
             .enumerate()
             .for_each(|(idx, node_idx)| {
                 let row = coordinate_matrix.row(*node_idx);
-                self.nodes_coordinates.set_row(idx, &row.fixed_columns(0));
+                self.nodes_coordinates.set_row(idx, &row.fixed_columns(0)); // 每节点3坐标只取第一个
             });
     }
 }
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    #[test]
+    fn edge2_test() {
+        // TODO:
+    }
+}

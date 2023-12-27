@@ -1,8 +1,8 @@
 use nalgebra::DVector;
 
 use crate::base::{
-    elements::{Edge, ElementBase, GeneralElement},
     gauss::{Gauss, GaussResult},
+    primitives::{Edge, GeneralElement, PrimitiveBase},
 };
 
 use super::DiffusionElement;
@@ -35,76 +35,6 @@ impl<const N: usize> DiffusionElement<N, 1> for Edge<N> {
     }
 }
 
-// impl DiffusionElement<3, 1> for Edge3 {
-//     fn diffusion_stiffness_calc(
-//         &mut self,
-//         gauss: &Gauss,
-//         diffusivity: f64,
-//         dt: f64,
-//         prev_solution: &DVector<f64>,
-//     ) {
-//         let node_count = self.node_count();
-//         if let Gauss::Edge(gauss_edge) = gauss {
-//             for row in gauss_edge.gauss_matrix().row_iter() {
-//                 let xi = row[1];
-//                 let w = row[0];
-//                 let GaussResult {
-//                     shp_val,
-//                     shp_grad,
-//                     det_j,
-//                 } = gauss_edge.square_shape_func_calc(self.nodes_coordinates(), [xi]);
-//                 let JxW = det_j * w;
-//                 for i in 0..node_count {
-//                     let prev_f = prev_solution[self.global_node_id(i)];
-//                     self.F_mut()[i] += prev_f / dt * shp_val[i] * JxW;
-//                     for j in 0..node_count {
-//                         self.K_mut()[(i, j)] += (1.0 / dt * shp_val[j] * shp_val[i]
-//                             + diffusivity * shp_grad[j] * shp_grad[i])
-//                             * JxW;
-//                     }
-//                 }
-//             }
-//         } else {
-//             panic!("gauss input not match this element")
-//         }
-//     }
-// }
-
-// impl DiffusionElement<4, 1> for Edge4 {
-//     fn diffusion_stiffness_calc(
-//         &mut self,
-//         gauss: &Gauss,
-//         diffusivity: f64,
-//         dt: f64,
-//         prev_solution: &DVector<f64>,
-//     ) {
-//         let node_count = self.node_count();
-//         if let Gauss::Edge(gauss_edge) = gauss {
-//             for row in gauss_edge.gauss_matrix().row_iter() {
-//                 let xi = row[1];
-//                 let w = row[0];
-//                 let GaussResult {
-//                     shp_val,
-//                     shp_grad,
-//                     det_j,
-//                 } = gauss_edge.cubic_shape_func_calc(self.nodes_coordinates(), [xi]);
-//                 let JxW = det_j * w;
-//                 for i in 0..node_count {
-//                     let prev_f = prev_solution[self.global_node_id(i)];
-//                     self.F_mut()[i] += prev_f / dt * shp_val[i] * JxW;
-//                     for j in 0..node_count {
-//                         self.K_mut()[(i, j)] += (1.0 / dt * shp_val[j] * shp_val[i]
-//                             + diffusivity * shp_grad[j] * shp_grad[i])
-//                             * JxW;
-//                     }
-//                 }
-//             }
-//         } else {
-//             panic!("gauss input not match this element")
-//         }
-//     }
-// }
-
 #[cfg(test)]
 mod tests {
     use easyfem_mesh::{Lagrange1DMesh, Mesh};
@@ -112,8 +42,8 @@ mod tests {
 
     use crate::{
         base::{
-            elements::{Edge2, Edge3, Edge4, GeneralElement},
             gauss::{GaussEdge2, GaussEdge3, GaussEdge4},
+            primitives::{Edge2, Edge3, Edge4, GeneralElement},
         },
         diffusion::elements::DiffusionElement,
     };

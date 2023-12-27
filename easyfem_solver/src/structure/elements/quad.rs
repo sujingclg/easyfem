@@ -2,8 +2,8 @@ use nalgebra::{Matrix2x3, Matrix3x2};
 
 use crate::{
     base::{
-        elements::{ElementBase, Quad},
         gauss::{Gauss, GaussResult},
+        primitives::{PrimitiveBase, Quad},
     },
     materials::Material,
 };
@@ -57,8 +57,8 @@ mod tests {
 
     use crate::{
         base::{
-            elements::{GeneralElement, Quad4, Quad9},
             gauss::{GaussQuad4, GaussQuad9},
+            primitives::{GeneralElement, Quad4, Quad9},
         },
         materials::{IsotropicLinearElastic2D, PlaneCondition::*},
     };

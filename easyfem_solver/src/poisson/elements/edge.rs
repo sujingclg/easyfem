@@ -1,6 +1,6 @@
 use crate::base::{
-    elements::{Edge, ElementBase},
     gauss::{Gauss, GaussResult},
+    primitives::{Edge, PrimitiveBase},
 };
 
 use super::PoissonElement;
@@ -34,8 +34,8 @@ mod tests {
 
     use crate::{
         base::{
-            elements::{Edge2, GeneralElement},
             gauss::GaussEdge2,
+            primitives::{Edge2, GeneralElement},
         },
         poisson::elements::PoissonElement,
     };

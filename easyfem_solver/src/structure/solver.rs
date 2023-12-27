@@ -1,7 +1,7 @@
 use nalgebra::{DMatrix, DVector, MatrixXx3};
 
 use crate::{
-    base::{elements::GeneralElement, gauss::GaussQuad4},
+    base::{gauss::GaussQuad4, primitives::GeneralElement},
     materials::Material,
 };
 
@@ -108,7 +108,7 @@ mod tests {
     use nalgebra::SMatrix;
 
     use crate::{
-        base::elements::Quad4,
+        base::primitives::Quad4,
         materials::{IsotropicLinearElastic2D, PlaneCondition::*},
     };
 

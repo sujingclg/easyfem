@@ -3,8 +3,8 @@ use nalgebra::{DMatrix, DVector};
 
 use crate::{
     base::{
-        elements::{Edge2, GeneralElement},
         gauss::GaussEdge2,
+        primitives::{Edge2, GeneralElement},
     },
     diffusion::elements::DiffusionElement,
 };

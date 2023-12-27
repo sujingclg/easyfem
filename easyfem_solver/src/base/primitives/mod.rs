@@ -12,7 +12,7 @@ use nalgebra::{DMatrix, DVector, MatrixXx3};
 use super::utils::flatten_vector;
 
 /// N -> 单元节点个数
-pub trait ElementBase<const N: usize> {
+pub trait PrimitiveBase<const N: usize> {
     type CoordMatrix;
 
     fn node_dof(&self) -> usize;
@@ -31,7 +31,7 @@ pub trait ElementBase<const N: usize> {
 }
 
 /// N -> 单元节点个数
-pub trait GeneralElement<const N: usize>: ElementBase<N> {
+pub trait GeneralElement<const N: usize>: PrimitiveBase<N> {
     /// 从局部 connectivity 的索引拿到全局索引
     fn global_node_id(&self, idx: usize) -> usize {
         self.connectivity()[idx]

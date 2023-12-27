@@ -2,8 +2,8 @@ use nalgebra::{Matrix3x6, Matrix6x3};
 
 use crate::{
     base::{
-        elements::{Cube, ElementBase},
         gauss::{Gauss, GaussResult},
+        primitives::{Cube, PrimitiveBase},
     },
     materials::Material,
 };
@@ -66,8 +66,8 @@ mod tests {
 
     use crate::{
         base::{
-            elements::{Cube8, GeneralElement},
             gauss::GaussCube8,
+            primitives::{Cube8, GeneralElement},
         },
         materials::IsotropicLinearElastic3D,
     };

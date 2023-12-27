@@ -1,7 +1,7 @@
 use crate::{
     base::{
-        elements::{Edge, ElementBase},
         gauss::Gauss,
+        primitives::{Edge, PrimitiveBase},
     },
     materials::Material,
 };
@@ -34,8 +34,8 @@ mod tests {
 
     use crate::{
         base::{
-            elements::{Edge2, Edge3, GeneralElement},
             gauss::{GaussEdge2, GaussEdge3},
+            primitives::{Edge2, Edge3, GeneralElement},
         },
         materials::IsotropicLinearElastic1D,
     };

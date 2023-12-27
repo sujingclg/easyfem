@@ -1,6 +1,6 @@
 use nalgebra::{DMatrix, DVector, Matrix4x2, MatrixXx3, SMatrix};
 
-use super::{ElementBase, GeneralElement};
+use super::{GeneralElement, PrimitiveBase};
 
 pub type Quad4 = Quad<4>;
 pub type Quad9 = Quad<9>;
@@ -40,7 +40,7 @@ impl Quad<9> {
     }
 }
 
-impl<const N: usize> ElementBase<N> for Quad<N> {
+impl<const N: usize> PrimitiveBase<N> for Quad<N> {
     type CoordMatrix = SMatrix<f64, N, 2>;
 
     fn node_dof(&self) -> usize {

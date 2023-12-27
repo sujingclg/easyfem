@@ -3,11 +3,11 @@ mod quad;
 
 use nalgebra::DVector;
 
-use crate::base::{elements::ElementBase, gauss::Gauss};
+use crate::base::{gauss::Gauss, primitives::PrimitiveBase};
 
 /// N -> 单元节点个数
 /// D -> 坐标系维度
-pub trait DiffusionElement<const N: usize, const D: usize>: ElementBase<N> {
+pub trait DiffusionElement<const N: usize, const D: usize>: PrimitiveBase<N> {
     fn diffusion_stiffness_calc(
         &mut self,
         gauss: &impl Gauss<N, D>,
