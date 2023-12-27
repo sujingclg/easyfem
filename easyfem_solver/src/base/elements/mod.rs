@@ -1,10 +1,11 @@
-mod cube;
 mod edge;
-mod quad;
+pub use edge::*;
 
-pub use cube::Cube8;
-pub use edge::{Edge2, Edge3};
-pub use quad::{Quad4, Quad9};
+mod quad;
+pub use quad::*;
+
+mod cube;
+pub use cube::*;
 
 use nalgebra::{DMatrix, DVector, MatrixXx3};
 
@@ -50,4 +51,3 @@ pub trait GeneralElement<const N: usize>: ElementBase<N> {
         self.F_mut().fill(0.0);
     }
 }
-

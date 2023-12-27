@@ -1,28 +1,33 @@
-use nalgebra::{Matrix4x2, MatrixXx3, SMatrix, Vector4};
+use nalgebra::{Matrix4x2, SMatrix, Vector4};
 
-use super::{utils::gauss_2d_matrix, GaussResult};
+use super::{utils::gauss_2d_vector, Gauss, GaussResult};
 
-pub struct GaussQuad {
-    gauss_matrix: MatrixXx3<f64>, // 高斯积分矩阵, 行数为高斯积分点个数
-                                  // 1列->w 2列->xi 3列->eta
+/// N -> 单元节点个数
+pub struct GaussQuad<const N: usize> {
+    gauss_vector: Vec<(f64, [f64; 2])>, // 高斯积分矩阵, 行数为高斯积分点个数
+                                        // 1列->w 2列->xi 3列->eta
 }
 
-impl GaussQuad {
+impl<const N: usize> GaussQuad<N> {
     pub fn new(gauss_deg: usize) -> Self {
         GaussQuad {
-            gauss_matrix: gauss_2d_matrix(gauss_deg),
+            gauss_vector: gauss_2d_vector(gauss_deg),
         }
     }
+}
 
-    pub fn gauss_matrix(&self) -> &MatrixXx3<f64> {
-        &self.gauss_matrix
+pub type GaussQuad4 = GaussQuad<4>;
+
+impl Gauss<4, 2> for GaussQuad4 {
+    fn gauss_vector(&self) -> &Vec<(f64, [f64; 2])> {
+        &self.gauss_vector
     }
 
-    pub fn linear_shape_func_calc(
+    fn shape_func_calc(
         &self,
-        nodes_coordinates: &SMatrix<f64, 4, 2>,
-        gauss_point: [f64; 2],
-    ) -> GaussResult<4, 2> {
+        nodes_coordinates: &nalgebra::SMatrix<f64, 4, 2>, // 单元的节点坐标矩阵
+        gauss_point: &[f64; 2],
+    ) -> super::GaussResult<4, 2> {
         let [xi, eta] = gauss_point;
         // 2维4节点等参元形函数
         let shp_val = Vector4::new(
@@ -61,11 +66,19 @@ impl GaussQuad {
             det_j,
         }
     }
+}
 
-    pub fn square_shape_func_calc(
+pub type GaussQuad9 = GaussQuad<9>;
+
+impl Gauss<9, 2> for GaussQuad9 {
+    fn gauss_vector(&self) -> &Vec<(f64, [f64; 2])> {
+        &self.gauss_vector
+    }
+
+    fn shape_func_calc(
         &self,
-        nodes_coordinates: &SMatrix<f64, 9, 2>,
-        gauss_point: [f64; 2],
+        nodes_coordinates: &nalgebra::SMatrix<f64, 9, 2>, // 单元的节点坐标矩阵
+        gauss_point: &[f64; 2],
     ) -> GaussResult<9, 2> {
         let [xi, eta] = gauss_point;
         // 2维9节点等参元形函数
@@ -123,6 +136,12 @@ impl GaussQuad {
             det_j,
         }
     }
+}
 
-    // pub fn cubic_shape_func_calc() {}
+#[cfg(test)]
+mod tests {
+    // use super::*;
+
+    // #[test]
+    // fn test() {}
 }

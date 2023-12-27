@@ -1,39 +1,35 @@
-use nalgebra::{Matrix2x1, Matrix3x1, Matrix4x1, MatrixXx2, SMatrix, Vector2, Vector3, Vector4};
+use nalgebra::{Matrix2x1, Matrix3x1, Matrix4x1, SMatrix, Vector2, Vector3, Vector4};
 
-use super::{utils::gauss_1d_matrix, GaussResult};
+use super::{
+    utils::{gauss_1d_vector, jacob_determinant},
+    Gauss, GaussResult,
+};
 
-/// 计算jacob行列式
-fn jacob_determinant<const N: usize>(
-    shp_grad: &SMatrix<f64, N, 1>,
-    nodes_coordinates: &SMatrix<f64, N, 1>,
-) -> f64 {
-    let mut dx_dxi = 0.0;
-    for i in 0..N {
-        dx_dxi += shp_grad[i] * nodes_coordinates[i];
-    }
-    dx_dxi
+/// N -> 单元节点个数
+pub struct GaussEdge<const N: usize> {
+    gauss_vector: Vec<(f64, [f64; 1])>, // 高斯积分矩阵, 行数为高斯积分点个数
+                                        // 1列->w 2列->xi
 }
 
-pub struct GaussEdge {
-    gauss_matrix: MatrixXx2<f64>, // 高斯积分矩阵, 行数为高斯积分点个数
-                                  // 1列->w 2列->xi
-}
-
-impl GaussEdge {
+impl<const N: usize> GaussEdge<N> {
     pub fn new(gauss_deg: usize) -> Self {
         GaussEdge {
-            gauss_matrix: gauss_1d_matrix(gauss_deg),
+            gauss_vector: gauss_1d_vector(gauss_deg),
         }
     }
+}
 
-    pub fn gauss_matrix(&self) -> &MatrixXx2<f64> {
-        &self.gauss_matrix
+pub type GaussEdge2 = GaussEdge<2>;
+
+impl Gauss<2, 1> for GaussEdge2 {
+    fn gauss_vector(&self) -> &Vec<(f64, [f64; 1])> {
+        &self.gauss_vector
     }
 
-    pub fn linear_shape_func_calc(
+    fn shape_func_calc(
         &self,
         nodes_coordinates: &SMatrix<f64, 2, 1>, // 单元的节点坐标矩阵
-        gauss_point: [f64; 1],
+        gauss_point: &[f64; 1],
     ) -> GaussResult<2, 1> {
         let [xi] = gauss_point;
 
@@ -58,11 +54,19 @@ impl GaussEdge {
             det_j,
         }
     }
+}
 
-    pub fn square_shape_func_calc(
+pub type GaussEdge3 = GaussEdge<3>;
+
+impl Gauss<3, 1> for GaussEdge3 {
+    fn gauss_vector(&self) -> &Vec<(f64, [f64; 1])> {
+        &self.gauss_vector
+    }
+
+    fn shape_func_calc(
         &self,
         nodes_coordinates: &SMatrix<f64, 3, 1>, // 单元的节点坐标矩阵
-        gauss_point: [f64; 1],
+        gauss_point: &[f64; 1],
     ) -> GaussResult<3, 1> {
         let [xi] = gauss_point;
 
@@ -89,11 +93,19 @@ impl GaussEdge {
             det_j,
         }
     }
+}
 
-    pub fn cubic_shape_func_calc(
+pub type GaussEdge4 = GaussEdge<4>;
+
+impl Gauss<4, 1> for GaussEdge4 {
+    fn gauss_vector(&self) -> &Vec<(f64, [f64; 1])> {
+        &self.gauss_vector
+    }
+
+    fn shape_func_calc(
         &self,
         nodes_coordinates: &SMatrix<f64, 4, 1>, // 单元的节点坐标矩阵
-        gauss_point: [f64; 1],
+        gauss_point: &[f64; 1],
     ) -> GaussResult<4, 1> {
         let [xi] = gauss_point;
 
@@ -123,4 +135,12 @@ impl GaussEdge {
             det_j,
         }
     }
+}
+
+#[cfg(test)]
+mod tests {
+    // use super::*;
+
+    // #[test]
+    // fn test() {}
 }

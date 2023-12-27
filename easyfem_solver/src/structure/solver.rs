@@ -1,11 +1,7 @@
-// use easyfem_mesh::Mesh;
 use nalgebra::{DMatrix, DVector, MatrixXx3};
 
 use crate::{
-    base::{
-        elements::GeneralElement,
-        gauss::{Gauss, GaussQuad},
-    },
+    base::{elements::GeneralElement, gauss::GaussQuad4},
     materials::Material,
 };
 
@@ -42,14 +38,15 @@ impl Structure2DSolver {
         &mut self,
         connectivity_matrix: &DMatrix<usize>,    // 单元节点矩阵
         node_coordinate_matrix: &MatrixXx3<f64>, // 节点坐标矩阵
-        element: &mut (impl GeneralElement<4> + StructureElement<3, 4>),
+        element: &mut (impl GeneralElement<4> + StructureElement<3, 4, 2>),
         // materialsMap: &HashMap<usize, Box<dyn Material<3>>>,
         mat: &impl Material<3>,
     ) {
-        let gauss_quad = Gauss::Quad(GaussQuad::new(2));
+        // let gauss_quad = Gauss::Quad(GaussQuad::new(2));
+        let gauss = GaussQuad4::new(2);
         for element_number in 0..connectivity_matrix.nrows() {
             element.update(element_number, connectivity_matrix, node_coordinate_matrix);
-            element.structure_stiffness_calc(&gauss_quad, mat);
+            element.structure_stiffness_calc(&gauss, mat);
             element.assemble(&mut self.stiffness_matrix, &mut self.force_vector);
         }
     }

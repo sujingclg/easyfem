@@ -2,7 +2,7 @@ use nalgebra::{Matrix2x3, Matrix3x2};
 
 use crate::{
     base::{
-        elements::{ElementBase, Quad4, Quad9},
+        elements::{ElementBase, Quad},
         gauss::{Gauss, GaussResult},
     },
     materials::Material,
@@ -10,86 +10,42 @@ use crate::{
 
 use super::StructureElement;
 
-impl StructureElement<3, 4> for Quad4 {
-    fn structure_stiffness_calc(&mut self, gauss: &Gauss, mat: &impl Material<3>) {
+impl<const N: usize> StructureElement<3, N, 2> for Quad<N> {
+    fn structure_stiffness_calc(&mut self, gauss: &impl Gauss<N, 2>, mat: &impl Material<3>) {
         let node_count = self.node_count();
-        if let Gauss::Quad(gauss_quad) = gauss {
-            let mut B = Matrix3x2::zeros(); // 应变矩阵
-            let mut Bt = Matrix2x3::zeros(); // 应变矩阵的转置
-            for row in gauss_quad.gauss_matrix().row_iter() {
-                let xi = row[1];
-                let eta = row[2];
-                let w = row[0];
-                let GaussResult {
-                    shp_grad, det_j, ..
-                } = gauss_quad.linear_shape_func_calc(self.nodes_coordinates(), [xi, eta]);
-                let JxW = det_j * w;
-                for i in 0..node_count {
-                    B[(0, 0)] = shp_grad[(i, 0)]; // 矩阵分块乘法, 每次计算出2x2的矩阵, 然后组装到单元刚度矩阵的对应位置
-                    B[(1, 1)] = shp_grad[(i, 1)];
-                    B[(2, 0)] = shp_grad[(i, 1)];
-                    B[(2, 1)] = shp_grad[(i, 0)];
-                    for j in 0..node_count {
-                        Bt[(0, 0)] = shp_grad[(j, 0)];
-                        Bt[(0, 2)] = shp_grad[(j, 1)];
-                        Bt[(1, 1)] = shp_grad[(j, 1)];
-                        Bt[(1, 2)] = shp_grad[(j, 0)];
-                        let C = Bt * mat.get_constitutive_matrix() * B;
-                        // 这里要对高斯积分进行累加
-                        // for (r, c) in square_range(2) {
-                        //     self.K_mut()[(2 * i + r, 2 * j + c)] += C[(r, c)] * JxW;
-                        // }
-                        self.K_mut()[(2 * i + 0, 2 * j + 0)] += C[(0, 0)] * JxW; // K_ux,ux
-                        self.K_mut()[(2 * i + 0, 2 * j + 1)] += C[(0, 1)] * JxW; // K_ux,uy
-                        self.K_mut()[(2 * i + 1, 2 * j + 0)] += C[(1, 0)] * JxW; // K_uy,ux
-                        self.K_mut()[(2 * i + 1, 2 * j + 1)] += C[(1, 1)] * JxW;
-                        // K_uy,uy
-                    }
-                }
-            }
-        } else {
-            panic!("gauss input not match this element")
-        }
-    }
-}
 
-impl StructureElement<3, 9> for Quad9 {
-    fn structure_stiffness_calc(&mut self, gauss: &Gauss, mat: &impl Material<3>) {
-        let node_count = self.node_count();
-        if let Gauss::Quad(gauss_quad) = gauss {
-            let mut B = Matrix3x2::zeros(); // 应变矩阵
-            let mut Bt = Matrix2x3::zeros(); // 应变矩阵的转置
-            for row in gauss_quad.gauss_matrix().row_iter() {
-                let xi = row[1];
-                let eta = row[2];
-                let w = row[0];
-                let GaussResult {
-                    shp_grad, det_j, ..
-                } = gauss_quad.square_shape_func_calc(self.nodes_coordinates(), [xi, eta]);
-                let JxW = det_j * w;
-                for i in 0..node_count {
-                    B[(0, 0)] = shp_grad[(i, 0)]; // 矩阵分块乘法, 每次计算出2x2的矩阵, 然后组装到单元刚度矩阵的对应位置
-                    B[(1, 1)] = shp_grad[(i, 1)];
-                    B[(2, 0)] = shp_grad[(i, 1)];
-                    B[(2, 1)] = shp_grad[(i, 0)];
-                    for j in 0..node_count {
-                        // println!("i = {i}, j = {j}");
-                        Bt[(0, 0)] = shp_grad[(j, 0)];
-                        Bt[(0, 2)] = shp_grad[(j, 1)];
-                        Bt[(1, 1)] = shp_grad[(j, 1)];
-                        Bt[(1, 2)] = shp_grad[(j, 0)];
-                        let C = Bt * mat.get_constitutive_matrix() * B;
-                        // 这里要对高斯积分进行累加
-                        self.K_mut()[(2 * i + 0, 2 * j + 0)] += C[(0, 0)] * JxW; // K_ux,ux
-                        self.K_mut()[(2 * i + 0, 2 * j + 1)] += C[(0, 1)] * JxW; // K_ux,uy
-                        self.K_mut()[(2 * i + 1, 2 * j + 0)] += C[(1, 0)] * JxW; // K_uy,ux
-                        self.K_mut()[(2 * i + 1, 2 * j + 1)] += C[(1, 1)] * JxW;
-                        // K_uy,uy
-                    }
+        let mut B = Matrix3x2::zeros(); // 应变矩阵
+        let mut Bt = Matrix2x3::zeros(); // 应变矩阵的转置
+        for (w, gauss_point) in gauss.gauss_vector() {
+            // let xi = row[1];
+            // let eta = row[2];
+            // let w = row[0];
+            let GaussResult {
+                shp_grad, det_j, ..
+            } = gauss.shape_func_calc(self.nodes_coordinates(), gauss_point);
+            let JxW = det_j * w;
+            for i in 0..node_count {
+                B[(0, 0)] = shp_grad[(i, 0)]; // 矩阵分块乘法, 每次计算出2x2的矩阵, 然后组装到单元刚度矩阵的对应位置
+                B[(1, 1)] = shp_grad[(i, 1)];
+                B[(2, 0)] = shp_grad[(i, 1)];
+                B[(2, 1)] = shp_grad[(i, 0)];
+                for j in 0..node_count {
+                    Bt[(0, 0)] = shp_grad[(j, 0)];
+                    Bt[(0, 2)] = shp_grad[(j, 1)];
+                    Bt[(1, 1)] = shp_grad[(j, 1)];
+                    Bt[(1, 2)] = shp_grad[(j, 0)];
+                    let C = Bt * mat.get_constitutive_matrix() * B;
+                    // 这里要对高斯积分进行累加
+                    // for (r, c) in square_range(2) {
+                    //     self.K_mut()[(2 * i + r, 2 * j + c)] += C[(r, c)] * JxW;
+                    // }
+                    self.K_mut()[(2 * i + 0, 2 * j + 0)] += C[(0, 0)] * JxW; // K_ux,ux
+                    self.K_mut()[(2 * i + 0, 2 * j + 1)] += C[(0, 1)] * JxW; // K_ux,uy
+                    self.K_mut()[(2 * i + 1, 2 * j + 0)] += C[(1, 0)] * JxW; // K_uy,ux
+                    self.K_mut()[(2 * i + 1, 2 * j + 1)] += C[(1, 1)] * JxW;
+                    // K_uy,uy
                 }
             }
-        } else {
-            panic!("gauss input not match this element")
         }
     }
 }
@@ -100,7 +56,10 @@ mod tests {
     use nalgebra::{DMatrix, DVector, MatrixXx3, SMatrix};
 
     use crate::{
-        base::{elements::GeneralElement, gauss::GaussQuad},
+        base::{
+            elements::{GeneralElement, Quad4, Quad9},
+            gauss::{GaussQuad4, GaussQuad9},
+        },
         materials::{IsotropicLinearElastic2D, PlaneCondition::*},
     };
 
@@ -116,7 +75,8 @@ mod tests {
         let mut stiffness_matrix = DMatrix::zeros(n_dofs, n_dofs);
         let mut right_vector = DVector::zeros(n_dofs);
         let mat = IsotropicLinearElastic2D::new(3.0e7, 0.25, PlaneStress, 1.0);
-        let gauss = Gauss::Quad(GaussQuad::new(2));
+        let gauss = GaussQuad4::new(2);
+
         for element_number in 0..mesh.element_count() {
             quad4.update(element_number, mesh.elements(), mesh.nodes());
             quad4.structure_stiffness_calc(&gauss, &mat);
@@ -156,7 +116,8 @@ mod tests {
         let mut stiffness_matrix = DMatrix::zeros(n_dofs, n_dofs);
         let mut right_vector = DVector::zeros(n_dofs);
         let mat = IsotropicLinearElastic2D::new(3.0e7, 0.25, PlaneStress, 1.0);
-        let gauss = Gauss::Quad(GaussQuad::new(2));
+        // let gauss = Gauss::Quad(GaussQuad::new(2));
+        let gauss = GaussQuad9::new(2);
         for element_number in 0..connectivity_matrix.nrows() {
             quad9.update(
                 element_number,

@@ -2,7 +2,7 @@ use nalgebra::{Matrix3x6, Matrix6x3};
 
 use crate::{
     base::{
-        elements::{Cube8, ElementBase},
+        elements::{Cube, ElementBase},
         gauss::{Gauss, GaussResult},
     },
     materials::Material,
@@ -10,58 +10,51 @@ use crate::{
 
 use super::StructureElement;
 
-impl StructureElement<6, 8> for Cube8 {
-    fn structure_stiffness_calc(&mut self, gauss: &Gauss, mat: &impl Material<6>) {
+impl<const N: usize> StructureElement<6, N, 3> for Cube<N> {
+    fn structure_stiffness_calc(&mut self, gauss: &impl Gauss<N, 3>, mat: &impl Material<6>) {
         let node_count = self.node_count();
-        if let Gauss::Cube(gauss_cube) = gauss {
-            let mut B = Matrix6x3::zeros(); // 应变矩阵
-            let mut Bt = Matrix3x6::zeros(); // 应变矩阵的转置
-            for row in gauss_cube.gauss_matrix().row_iter() {
-                let xi = row[1];
-                let eta = row[2];
-                let zeta = row[3];
-                let w = row[0];
-                let GaussResult {
-                    shp_grad, det_j, ..
-                } = gauss_cube.linear_shape_func_calc(self.nodes_coordinates(), [xi, eta, zeta]);
-                let JxW = det_j * w;
-                for i in 0..node_count {
-                    B[(0, 0)] = shp_grad[(i, 0)]; // 矩阵分块乘法, 每次计算出3x3的矩阵, 然后组装到单元刚度矩阵的对应位置
-                    B[(1, 1)] = shp_grad[(i, 1)];
-                    B[(2, 2)] = shp_grad[(i, 2)];
-                    B[(3, 0)] = shp_grad[(i, 1)];
-                    B[(3, 1)] = shp_grad[(i, 0)];
-                    B[(4, 1)] = shp_grad[(i, 2)];
-                    B[(4, 2)] = shp_grad[(i, 1)];
-                    B[(5, 0)] = shp_grad[(i, 2)];
-                    B[(5, 2)] = shp_grad[(i, 0)];
-                    for j in 0..node_count {
-                        Bt[(0, 0)] = shp_grad[(j, 0)];
-                        Bt[(0, 3)] = shp_grad[(j, 1)];
-                        Bt[(0, 5)] = shp_grad[(j, 2)];
-                        Bt[(1, 1)] = shp_grad[(j, 1)];
-                        Bt[(1, 3)] = shp_grad[(j, 0)];
-                        Bt[(1, 4)] = shp_grad[(j, 2)];
-                        Bt[(2, 2)] = shp_grad[(j, 2)];
-                        Bt[(2, 4)] = shp_grad[(j, 1)];
-                        Bt[(2, 5)] = shp_grad[(j, 0)];
-                        let C = Bt * mat.get_constitutive_matrix() * B;
-                        // 这里要对高斯积分进行累加
-                        self.K_mut()[(3 * i + 0, 3 * j + 0)] += C[(0, 0)] * JxW; // K_ux,ux
-                        self.K_mut()[(3 * i + 0, 3 * j + 1)] += C[(0, 1)] * JxW; // K_ux,uy
-                        self.K_mut()[(3 * i + 0, 3 * j + 2)] += C[(0, 2)] * JxW; // K_ux,uz
-                        self.K_mut()[(3 * i + 1, 3 * j + 0)] += C[(1, 0)] * JxW; // K_uy,ux
-                        self.K_mut()[(3 * i + 1, 3 * j + 1)] += C[(1, 1)] * JxW; // K_uy,uy
-                        self.K_mut()[(3 * i + 1, 3 * j + 2)] += C[(1, 2)] * JxW; // K_uy,uz
-                        self.K_mut()[(3 * i + 2, 3 * j + 0)] += C[(2, 0)] * JxW; // K_uz,ux
-                        self.K_mut()[(3 * i + 2, 3 * j + 1)] += C[(2, 1)] * JxW; // K_uz,uy
-                        self.K_mut()[(3 * i + 2, 3 * j + 2)] += C[(2, 2)] * JxW;
-                        // K_uz,uz
-                    }
+
+        let mut B = Matrix6x3::zeros(); // 应变矩阵
+        let mut Bt = Matrix3x6::zeros(); // 应变矩阵的转置
+        for (w, gauss_point) in gauss.gauss_vector() {
+            let GaussResult {
+                shp_grad, det_j, ..
+            } = gauss.shape_func_calc(self.nodes_coordinates(), gauss_point);
+            let JxW = det_j * w;
+            for i in 0..node_count {
+                B[(0, 0)] = shp_grad[(i, 0)]; // 矩阵分块乘法, 每次计算出3x3的矩阵, 然后组装到单元刚度矩阵的对应位置
+                B[(1, 1)] = shp_grad[(i, 1)];
+                B[(2, 2)] = shp_grad[(i, 2)];
+                B[(3, 0)] = shp_grad[(i, 1)];
+                B[(3, 1)] = shp_grad[(i, 0)];
+                B[(4, 1)] = shp_grad[(i, 2)];
+                B[(4, 2)] = shp_grad[(i, 1)];
+                B[(5, 0)] = shp_grad[(i, 2)];
+                B[(5, 2)] = shp_grad[(i, 0)];
+                for j in 0..node_count {
+                    Bt[(0, 0)] = shp_grad[(j, 0)];
+                    Bt[(0, 3)] = shp_grad[(j, 1)];
+                    Bt[(0, 5)] = shp_grad[(j, 2)];
+                    Bt[(1, 1)] = shp_grad[(j, 1)];
+                    Bt[(1, 3)] = shp_grad[(j, 0)];
+                    Bt[(1, 4)] = shp_grad[(j, 2)];
+                    Bt[(2, 2)] = shp_grad[(j, 2)];
+                    Bt[(2, 4)] = shp_grad[(j, 1)];
+                    Bt[(2, 5)] = shp_grad[(j, 0)];
+                    let C = Bt * mat.get_constitutive_matrix() * B;
+                    // 这里要对高斯积分进行累加
+                    self.K_mut()[(3 * i + 0, 3 * j + 0)] += C[(0, 0)] * JxW; // K_ux,ux
+                    self.K_mut()[(3 * i + 0, 3 * j + 1)] += C[(0, 1)] * JxW; // K_ux,uy
+                    self.K_mut()[(3 * i + 0, 3 * j + 2)] += C[(0, 2)] * JxW; // K_ux,uz
+                    self.K_mut()[(3 * i + 1, 3 * j + 0)] += C[(1, 0)] * JxW; // K_uy,ux
+                    self.K_mut()[(3 * i + 1, 3 * j + 1)] += C[(1, 1)] * JxW; // K_uy,uy
+                    self.K_mut()[(3 * i + 1, 3 * j + 2)] += C[(1, 2)] * JxW; // K_uy,uz
+                    self.K_mut()[(3 * i + 2, 3 * j + 0)] += C[(2, 0)] * JxW; // K_uz,ux
+                    self.K_mut()[(3 * i + 2, 3 * j + 1)] += C[(2, 1)] * JxW; // K_uz,uy
+                    self.K_mut()[(3 * i + 2, 3 * j + 2)] += C[(2, 2)] * JxW;
+                    // K_uz,uz
                 }
             }
-        } else {
-            panic!("gauss input not match this element")
         }
     }
 }
@@ -72,7 +65,10 @@ mod tests {
     use nalgebra::{DMatrix, DVector, SMatrix};
 
     use crate::{
-        base::{elements::GeneralElement, gauss::GaussCube},
+        base::{
+            elements::{Cube8, GeneralElement},
+            gauss::GaussCube8,
+        },
         materials::IsotropicLinearElastic3D,
     };
 
@@ -87,7 +83,8 @@ mod tests {
         let mut stiffness_matrix = DMatrix::zeros(n_dofs, n_dofs);
         let mut right_vector = DVector::zeros(n_dofs);
         let mat = IsotropicLinearElastic3D::new(1.0e10, 0.25);
-        let gauss = Gauss::Cube(GaussCube::new(2));
+        let gauss = GaussCube8::new(2);
+
         for element_number in 0..mesh.element_count() {
             cube8.update(element_number, mesh.elements(), mesh.nodes());
             cube8.structure_stiffness_calc(&gauss, &mat);

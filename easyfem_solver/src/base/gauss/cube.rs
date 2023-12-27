@@ -1,28 +1,33 @@
-use nalgebra::{MatrixXx4, SMatrix};
+use nalgebra::SMatrix;
 
-use super::{utils::gauss_3d_matrix, GaussResult};
+use super::{utils::gauss_3d_vector, Gauss, GaussResult};
 
-pub struct GaussCube {
-    gauss_matrix: MatrixXx4<f64>, // 高斯积分矩阵, 行数为高斯积分点个数
-                                  // 1列->w 2列->xi 3列->eta 4列->zeta
+/// N -> 单元节点个数
+pub struct GaussCube<const N: usize> {
+    gauss_vector: Vec<(f64, [f64; 3])>, // 高斯积分矩阵, 行数为高斯积分点个数
+                                        // 1列->w 2列->xi 3列->eta 4列->zeta
 }
 
-impl GaussCube {
+impl<const N: usize> GaussCube<N> {
     pub fn new(gauss_deg: usize) -> Self {
         GaussCube {
-            gauss_matrix: gauss_3d_matrix(gauss_deg),
+            gauss_vector: gauss_3d_vector(gauss_deg),
         }
     }
+}
 
-    pub fn gauss_matrix(&self) -> &MatrixXx4<f64> {
-        &self.gauss_matrix
+pub type GaussCube8 = GaussCube<8>;
+
+impl Gauss<8, 3> for GaussCube8 {
+    fn gauss_vector(&self) -> &Vec<(f64, [f64; 3])> {
+        &self.gauss_vector
     }
 
-    pub fn linear_shape_func_calc(
+    fn shape_func_calc(
         &self,
-        nodes_coordinates: &SMatrix<f64, 8, 3>, // 单元的节点坐标矩阵
-        gauss_point: [f64; 3],
-    ) -> GaussResult<8, 3> {
+        nodes_coordinates: &nalgebra::SMatrix<f64, 8, 3>, // 单元的节点坐标矩阵
+        gauss_point: &[f64; 3],
+    ) -> super::GaussResult<8, 3> {
         let [xi, eta, zeta] = gauss_point;
         // 3维8节点六面体等参元形函数
         let shp_val = SMatrix::<f64, 8, 1>::from_column_slice(&[
@@ -102,8 +107,12 @@ impl GaussCube {
             det_j,
         }
     }
+}
 
-    // pub fn square_shape_func_calc() {}
+#[cfg(test)]
+mod tests {
+    // use super::*;
 
-    // pub fn cubic_shape_func_calc() {}
+    // #[test]
+    // fn test() {}
 }
