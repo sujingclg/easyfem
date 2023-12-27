@@ -38,7 +38,7 @@ impl Structure2DSolver {
         &mut self,
         connectivity_matrix: &DMatrix<usize>,    // 单元节点矩阵
         node_coordinate_matrix: &MatrixXx3<f64>, // 节点坐标矩阵
-        element: &mut (impl GeneralElement<4> + StructureElement<3, 4, 2>),
+        element: &mut (impl GeneralElement<4, 2> + StructureElement<3, 4, 2>),
         // materialsMap: &HashMap<usize, Box<dyn Material<3>>>,
         mat: &impl Material<3>,
     ) {

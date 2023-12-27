@@ -24,9 +24,7 @@ impl Cube<8> {
     }
 }
 
-impl<const N: usize> PrimitiveBase<N> for Cube<N> {
-    type CoordMatrix = SMatrix<f64, N, 3>;
-
+impl<const N: usize> PrimitiveBase<N, 3> for Cube<N> {
     fn node_dof(&self) -> usize {
         self.node_dof
     }
@@ -43,7 +41,7 @@ impl<const N: usize> PrimitiveBase<N> for Cube<N> {
     //     &mut self.connectivity
     // }
 
-    fn nodes_coordinates(&self) -> &Self::CoordMatrix {
+    fn nodes_coordinates(&self) -> &SMatrix<f64, N, 3> {
         &self.nodes_coordinates
     }
 
@@ -60,7 +58,7 @@ impl<const N: usize> PrimitiveBase<N> for Cube<N> {
     }
 }
 
-impl<const N: usize> GeneralElement<N> for Cube<N> {
+impl<const N: usize> GeneralElement<N, 3> for Cube<N> {
     fn update(
         &mut self,
         element_number: usize,                // 单元编号, 即单元的全局索引

@@ -7,14 +7,13 @@ pub use quad::*;
 mod cube;
 pub use cube::*;
 
-use nalgebra::{DMatrix, DVector, MatrixXx3};
+use nalgebra::{DMatrix, DVector, MatrixXx3, SMatrix};
 
 use super::utils::flatten_vector;
 
 /// N -> 单元节点个数
-pub trait PrimitiveBase<const N: usize> {
-    type CoordMatrix;
-
+/// D -> 坐标系维度
+pub trait PrimitiveBase<const N: usize, const D: usize> {
     fn node_dof(&self) -> usize;
 
     fn node_count(&self) -> usize;
@@ -22,7 +21,7 @@ pub trait PrimitiveBase<const N: usize> {
     fn connectivity(&self) -> &[usize; N];
     // fn connectivity_mut(&mut self) -> &mut [usize; N];
 
-    fn nodes_coordinates(&self) -> &Self::CoordMatrix;
+    fn nodes_coordinates(&self) -> &SMatrix<f64, N, D>;
     // fn nodes_coordinates_mut(&mut self) -> &mut SMatrix<f64, N, D>;
 
     fn K_mut(&mut self) -> &mut DMatrix<f64>;
@@ -31,7 +30,8 @@ pub trait PrimitiveBase<const N: usize> {
 }
 
 /// N -> 单元节点个数
-pub trait GeneralElement<const N: usize>: PrimitiveBase<N> {
+/// D -> 坐标系维度
+pub trait GeneralElement<const N: usize, const D: usize>: PrimitiveBase<N, D> {
     /// 从局部 connectivity 的索引拿到全局索引
     fn global_node_id(&self, idx: usize) -> usize {
         self.connectivity()[idx]

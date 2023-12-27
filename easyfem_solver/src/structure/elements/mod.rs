@@ -12,7 +12,7 @@ use crate::{
 /// N -> 单元节点个数
 /// D -> 坐标系维度
 pub trait StructureElement<const O: usize, const N: usize, const D: usize>:
-    PrimitiveBase<N>
+    PrimitiveBase<N, D>
 {
     fn structure_stiffness_calc(&mut self, gauss: &impl Gauss<N, D>, mat: &impl Material<O>);
 
