@@ -5,7 +5,7 @@ use nalgebra::{DMatrix, DVector};
 
 trait DiffusionBase {
     fn stiffness_calculate(
-        &self,
+        &mut self,
         mesh: &impl Mesh,
         stiffness_matrix: &mut DMatrix<f64>,
         right_vector: &mut DVector<f64>,

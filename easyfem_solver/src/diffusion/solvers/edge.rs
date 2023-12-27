@@ -1,13 +1,9 @@
+use std::collections::HashMap;
+
 use easyfem_mesh::Mesh;
 use nalgebra::{DMatrix, DVector};
 
-use crate::{
-    base::{
-        gauss::GaussEdge2,
-        primitives::{Edge2, GeneralElement},
-    },
-    diffusion::elements::DiffusionElement,
-};
+use crate::diffusion::elements::{DiffusionEdge2, DiffusionEdge3, DiffusionElement};
 
 use super::{DiffusionBase, DiffusionSolver};
 
@@ -15,15 +11,22 @@ pub struct DiffusionEdgeSolver {
     diffusivity: f64,
     dt: f64,
     j0: f64,
+    edges: HashMap<String, Box<dyn DiffusionElement>>,
     // total_solutions: Option<DMatrix<f64>>,
 }
 
 impl DiffusionEdgeSolver {
     pub fn new(diffusivity: f64, dt: f64, j0: f64) -> Self {
+        let mut edges: HashMap<String, Box<dyn DiffusionElement>> = HashMap::new();
+        edges.insert(String::from("edge2"), Box::new(DiffusionEdge2::new(1, 2)));
+        edges.insert(String::from("edge3"), Box::new(DiffusionEdge3::new(1, 2)));
+        edges.insert(String::from("edge4"), Box::new(DiffusionEdge3::new(1, 2)));
+
         DiffusionEdgeSolver {
             diffusivity,
             dt,
             j0,
+            edges,
             // total_solutions: None,
         }
     }
@@ -37,19 +40,18 @@ impl DiffusionEdgeSolver {
 
 impl DiffusionBase for DiffusionEdgeSolver {
     fn stiffness_calculate(
-        &self,
+        &mut self,
         mesh: &impl Mesh,
         stiffness_matrix: &mut DMatrix<f64>,
         right_vector: &mut DVector<f64>,
         prev_solution: &DVector<f64>,
     ) {
-        // let gauss_edge = Gauss::Edge(GaussEdge::new(2));
-        let gauss = GaussEdge2::new(2);
-        let mut edge = Edge2::new(1);
-        for element_number in 0..mesh.element_count() {
-            edge.update(element_number, mesh.elements(), mesh.nodes());
-            edge.diffusion_stiffness_calc(&gauss, self.diffusivity, self.dt, prev_solution);
-            edge.assemble(stiffness_matrix, right_vector);
+        if let Some(element) = self.edges.get_mut("edge2") {
+            for element_number in 0..mesh.element_count() {
+                element.update(element_number, mesh.elements(), mesh.nodes());
+                element.diffusion_stiffness_calc(self.diffusivity, self.dt, prev_solution);
+                element.assemble(stiffness_matrix, right_vector);
+            }
         }
     }
 
