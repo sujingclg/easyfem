@@ -3,7 +3,7 @@ use nalgebra::{Matrix3x6, Matrix6x3};
 use crate::{
     base::{
         gauss::{Gauss, GaussCube8, GaussResult},
-        primitives::{Cube, GeneralElement, PrimitiveBase},
+        primitives::{Cube, Primitive},
     },
     materials::Material,
 };
@@ -91,6 +91,7 @@ impl<const N: usize> StructureElement<6> for StructureCube<N> {
         right_vector: &mut nalgebra::DVector<f64>,
     ) {
         self.cube.assemble(stiffness_matrix, right_vector);
+        self.cube.clean();
     }
 }
 

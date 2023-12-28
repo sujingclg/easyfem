@@ -1,10 +1,6 @@
 use nalgebra::{DMatrix, DVector, MatrixXx3, SMatrix};
 
-use super::{GeneralElement, PrimitiveBase};
-
-// pub type Edge2 = Edge<2>;
-// pub type Edge3 = Edge<3>;
-// pub type Edge4 = Edge<4>;
+use super::Primitive;
 
 /// N -> 单元节点个数
 pub struct Edge<const N: usize> {
@@ -51,7 +47,7 @@ impl Edge<4> {
     }
 }
 
-impl<const N: usize> PrimitiveBase<N, 1> for Edge<N> {
+impl<const N: usize> Primitive<N, 1> for Edge<N> {
     fn node_dof(&self) -> usize {
         self.node_dof
     }
@@ -64,27 +60,26 @@ impl<const N: usize> PrimitiveBase<N, 1> for Edge<N> {
         &self.connectivity
     }
 
-    // fn connectivity_mut(&mut self) -> &mut [usize; N] {
-    //     &mut self.connectivity
-    // }
-
     fn nodes_coordinates(&self) -> &SMatrix<f64, N, 1> {
         &self.nodes_coordinates
     }
-    // fn nodes_coordinates_mut(&mut self) -> &mut SMatrix<f64, N, 1> {
-    //     &mut self.nodes_coordinates
-    // }
+
+    fn K(&self) -> &DMatrix<f64> {
+        &self.K
+    }
 
     fn K_mut(&mut self) -> &mut DMatrix<f64> {
         &mut self.K
     }
 
+    fn F(&self) -> &DVector<f64> {
+        &self.F
+    }
+
     fn F_mut(&mut self) -> &mut DVector<f64> {
         &mut self.F
     }
-}
 
-impl<const N: usize> GeneralElement<N, 1> for Edge<N> {
     fn update(
         &mut self,
         element_number: usize,                // 单元编号, 即单元的全局索引
@@ -110,9 +105,4 @@ impl<const N: usize> GeneralElement<N, 1> for Edge<N> {
 }
 
 #[cfg(test)]
-mod tests {
-    #[test]
-    fn edge2_test() {
-        // TODO:
-    }
-}
+mod tests {}

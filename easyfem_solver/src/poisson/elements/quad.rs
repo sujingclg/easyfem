@@ -1,6 +1,6 @@
 use crate::base::{
     gauss::{Gauss, GaussQuad4, GaussResult},
-    primitives::{GeneralElement, PrimitiveBase, Quad},
+    primitives::{Primitive, Quad},
 };
 
 use super::PoissonElement;
@@ -61,6 +61,7 @@ impl<const N: usize> PoissonElement for PoissonQuad<N> {
         right_vector: &mut nalgebra::DVector<f64>,
     ) {
         self.quad.assemble(stiffness_matrix, right_vector);
+        self.quad.clean();
     }
 }
 

@@ -3,7 +3,7 @@ use nalgebra::{Matrix2x3, Matrix3x2};
 use crate::{
     base::{
         gauss::{Gauss, GaussQuad4, GaussQuad9, GaussResult},
-        primitives::{GeneralElement, PrimitiveBase, Quad},
+        primitives::{Primitive, Quad},
     },
     materials::Material,
 };
@@ -92,6 +92,7 @@ impl<const N: usize> StructureElement<3> for StructureQuad<N> {
         right_vector: &mut nalgebra::DVector<f64>,
     ) {
         self.quad.assemble(stiffness_matrix, right_vector);
+        self.quad.clean();
     }
 }
 

@@ -1,7 +1,7 @@
 use crate::{
     base::{
         gauss::{Gauss, GaussEdge2, GaussEdge3},
-        primitives::{Edge, GeneralElement, PrimitiveBase},
+        primitives::{Edge, Primitive},
     },
     materials::Material,
 };
@@ -69,6 +69,7 @@ impl<const N: usize> StructureElement<1> for StructureEdge<N> {
         right_vector: &mut nalgebra::DVector<f64>,
     ) {
         self.edge.assemble(stiffness_matrix, right_vector);
+        self.edge.clean();
     }
 }
 

@@ -2,7 +2,7 @@ use nalgebra::DVector;
 
 use crate::base::{
     gauss::{Gauss, GaussEdge2, GaussEdge3, GaussEdge4, GaussResult},
-    primitives::{Edge, GeneralElement, PrimitiveBase},
+    primitives::{Edge, Primitive},
 };
 
 use super::DiffusionElement;
@@ -86,6 +86,7 @@ impl<const N: usize> DiffusionElement for DiffusionEdge<N> {
         right_vector: &mut DVector<f64>,
     ) {
         self.edge.assemble(stiffness_matrix, right_vector);
+        self.edge.clean();
     }
 }
 

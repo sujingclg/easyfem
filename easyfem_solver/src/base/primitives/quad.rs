@@ -1,9 +1,6 @@
 use nalgebra::{DMatrix, DVector, Matrix4x2, MatrixXx3, SMatrix};
 
-use super::{GeneralElement, PrimitiveBase};
-
-// pub type Quad4 = Quad<4>;
-// pub type Quad9 = Quad<9>;
+use super::Primitive;
 
 /// N -> 单元节点个数
 pub struct Quad<const N: usize> {
@@ -40,7 +37,7 @@ impl Quad<9> {
     }
 }
 
-impl<const N: usize> PrimitiveBase<N, 2> for Quad<N> {
+impl<const N: usize> Primitive<N, 2> for Quad<N> {
     fn node_dof(&self) -> usize {
         self.node_dof
     }
@@ -57,16 +54,22 @@ impl<const N: usize> PrimitiveBase<N, 2> for Quad<N> {
         &self.nodes_coordinates
     }
 
+    fn K(&self) -> &DMatrix<f64> {
+        &self.K
+    }
+
     fn K_mut(&mut self) -> &mut DMatrix<f64> {
         &mut self.K
+    }
+
+    fn F(&self) -> &DVector<f64> {
+        &self.F
     }
 
     fn F_mut(&mut self) -> &mut DVector<f64> {
         &mut self.F
     }
-}
 
-impl<const N: usize> GeneralElement<N, 2> for Quad<N> {
     fn update(
         &mut self,
         element_number: usize,                // 单元编号, 即单元的全局索引
@@ -92,9 +95,4 @@ impl<const N: usize> GeneralElement<N, 2> for Quad<N> {
 }
 
 #[cfg(test)]
-mod tests {
-    #[test]
-    fn quad4_test() {
-        // TODO:
-    }
-}
+mod tests {}

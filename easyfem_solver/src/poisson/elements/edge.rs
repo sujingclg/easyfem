@@ -1,6 +1,6 @@
 use crate::base::{
     gauss::{Gauss, GaussEdge2, GaussEdge3, GaussResult},
-    primitives::{Edge, GeneralElement, PrimitiveBase},
+    primitives::{Edge, Primitive},
 };
 
 use super::PoissonElement;
@@ -69,6 +69,7 @@ impl<const N: usize> PoissonElement for PoissonEdge<N> {
         right_vector: &mut nalgebra::DVector<f64>,
     ) {
         self.edge.assemble(stiffness_matrix, right_vector);
+        self.edge.clean();
     }
 }
 

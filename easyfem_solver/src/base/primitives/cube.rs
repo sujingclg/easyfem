@@ -1,8 +1,6 @@
 use nalgebra::{DMatrix, DVector, MatrixXx3, SMatrix};
 
-use super::{GeneralElement, PrimitiveBase};
-
-pub type Cube8 = Cube<8>;
+use super::Primitive;
 
 pub struct Cube<const N: usize> {
     node_dof: usize,                       // 节点自由度 结构分析为3
@@ -24,7 +22,7 @@ impl Cube<8> {
     }
 }
 
-impl<const N: usize> PrimitiveBase<N, 3> for Cube<N> {
+impl<const N: usize> Primitive<N, 3> for Cube<N> {
     fn node_dof(&self) -> usize {
         self.node_dof
     }
@@ -37,28 +35,26 @@ impl<const N: usize> PrimitiveBase<N, 3> for Cube<N> {
         &self.connectivity
     }
 
-    // fn connectivity_mut(&mut self) -> &mut [usize; N] {
-    //     &mut self.connectivity
-    // }
-
     fn nodes_coordinates(&self) -> &SMatrix<f64, N, 3> {
         &self.nodes_coordinates
     }
 
-    // fn nodes_coordinates_mut(&mut self) -> &mut SMatrix<f64, N, 3> {
-    //     &mut self.nodes_coordinates
-    // }
+    fn K(&self) -> &DMatrix<f64> {
+        &self.K
+    }
 
     fn K_mut(&mut self) -> &mut DMatrix<f64> {
         &mut self.K
     }
 
+    fn F(&self) -> &DVector<f64> {
+        &self.F
+    }
+
     fn F_mut(&mut self) -> &mut DVector<f64> {
         &mut self.F
     }
-}
 
-impl<const N: usize> GeneralElement<N, 3> for Cube<N> {
     fn update(
         &mut self,
         element_number: usize,                // 单元编号, 即单元的全局索引
