@@ -2,27 +2,64 @@ use nalgebra::{Matrix2x3, Matrix3x2};
 
 use crate::{
     base::{
-        gauss::{Gauss, GaussResult},
-        primitives::{PrimitiveBase, Quad},
+        gauss::{Gauss, GaussQuad4, GaussQuad9, GaussResult},
+        primitives::{GeneralElement, PrimitiveBase, Quad},
     },
     materials::Material,
 };
 
 use super::StructureElement;
 
-impl<const N: usize> StructureElement<3, N, 2> for Quad<N> {
-    fn structure_stiffness_calc(&mut self, gauss: &impl Gauss<N, 2>, mat: &impl Material<3>) {
-        let node_count = self.node_count();
+pub struct StructureQuad<const N: usize> {
+    quad: Quad<N>,
+    gauss: Box<dyn Gauss<N, 2>>,
+}
+
+pub type StructureQuad4 = StructureQuad<4>;
+impl StructureQuad4 {
+    pub fn new(node_dof: usize, gauss_deg: usize) -> Self {
+        StructureQuad4 {
+            quad: Quad::<4>::new(node_dof),
+            gauss: Box::new(GaussQuad4::new(gauss_deg)),
+        }
+    }
+}
+
+pub type StructureQuad9 = StructureQuad<9>;
+impl StructureQuad9 {
+    pub fn new(node_dof: usize, gauss_deg: usize) -> Self {
+        StructureQuad9 {
+            quad: Quad::<9>::new(node_dof),
+            gauss: Box::new(GaussQuad9::new(gauss_deg)),
+        }
+    }
+}
+
+impl<const N: usize> StructureElement<3> for StructureQuad<N> {
+    fn update(
+        &mut self,
+        element_number: usize, // 单元编号, 即单元的全局索引
+        connectivity_matrix: &nalgebra::DMatrix<usize>, // 全局单元-节点编号矩阵
+        coordinate_matrix: &nalgebra::MatrixXx3<f64>, // 全局节点-坐标矩阵
+    ) {
+        self.quad
+            .update(element_number, connectivity_matrix, coordinate_matrix);
+    }
+
+    fn structure_stiffness_calc(&mut self, mat: &impl Material<3>) {
+        let node_count = self.quad.node_count();
 
         let mut B = Matrix3x2::zeros(); // 应变矩阵
         let mut Bt = Matrix2x3::zeros(); // 应变矩阵的转置
-        for (w, gauss_point) in gauss.gauss_vector() {
+        for (w, gauss_point) in self.gauss.gauss_vector() {
             // let xi = row[1];
             // let eta = row[2];
             // let w = row[0];
             let GaussResult {
                 shp_grad, det_j, ..
-            } = gauss.shape_func_calc(self.nodes_coordinates(), gauss_point);
+            } = self
+                .gauss
+                .shape_func_calc(self.quad.nodes_coordinates(), gauss_point);
             let JxW = det_j * w;
             for i in 0..node_count {
                 B[(0, 0)] = shp_grad[(i, 0)]; // 矩阵分块乘法, 每次计算出2x2的矩阵, 然后组装到单元刚度矩阵的对应位置
@@ -39,14 +76,22 @@ impl<const N: usize> StructureElement<3, N, 2> for Quad<N> {
                     // for (r, c) in square_range(2) {
                     //     self.K_mut()[(2 * i + r, 2 * j + c)] += C[(r, c)] * JxW;
                     // }
-                    self.K_mut()[(2 * i + 0, 2 * j + 0)] += C[(0, 0)] * JxW; // K_ux,ux
-                    self.K_mut()[(2 * i + 0, 2 * j + 1)] += C[(0, 1)] * JxW; // K_ux,uy
-                    self.K_mut()[(2 * i + 1, 2 * j + 0)] += C[(1, 0)] * JxW; // K_uy,ux
-                    self.K_mut()[(2 * i + 1, 2 * j + 1)] += C[(1, 1)] * JxW;
+                    self.quad.K_mut()[(2 * i + 0, 2 * j + 0)] += C[(0, 0)] * JxW; // K_ux,ux
+                    self.quad.K_mut()[(2 * i + 0, 2 * j + 1)] += C[(0, 1)] * JxW; // K_ux,uy
+                    self.quad.K_mut()[(2 * i + 1, 2 * j + 0)] += C[(1, 0)] * JxW; // K_uy,ux
+                    self.quad.K_mut()[(2 * i + 1, 2 * j + 1)] += C[(1, 1)] * JxW;
                     // K_uy,uy
                 }
             }
         }
+    }
+
+    fn assemble(
+        &mut self,
+        stiffness_matrix: &mut nalgebra::DMatrix<f64>,
+        right_vector: &mut nalgebra::DVector<f64>,
+    ) {
+        self.quad.assemble(stiffness_matrix, right_vector);
     }
 }
 
@@ -55,13 +100,7 @@ mod tests {
     use easyfem_mesh::{Lagrange2DMesh, Mesh};
     use nalgebra::{DMatrix, DVector, MatrixXx3, SMatrix};
 
-    use crate::{
-        base::{
-            gauss::{GaussQuad4, GaussQuad9},
-            primitives::{GeneralElement, Quad4, Quad9},
-        },
-        materials::{IsotropicLinearElastic2D, PlaneCondition::*},
-    };
+    use crate::materials::{IsotropicLinearElastic2D, PlaneCondition::*};
 
     use super::*;
 
@@ -71,15 +110,14 @@ mod tests {
         let mesh = Lagrange2DMesh::new(3.0, 5.0, 1, 2.0, 4.0, 1, "quad4");
         println!("{}", mesh);
         let n_dofs = mesh.node_count() * 2;
-        let mut quad4 = Quad4::new(2);
+        let mut quad4 = StructureQuad4::new(2, 2);
         let mut stiffness_matrix = DMatrix::zeros(n_dofs, n_dofs);
         let mut right_vector = DVector::zeros(n_dofs);
         let mat = IsotropicLinearElastic2D::new(3.0e7, 0.25, PlaneStress, 1.0);
-        let gauss = GaussQuad4::new(2);
 
         for element_number in 0..mesh.element_count() {
             quad4.update(element_number, mesh.elements(), mesh.nodes());
-            quad4.structure_stiffness_calc(&gauss, &mat);
+            quad4.structure_stiffness_calc(&mat);
             quad4.assemble(&mut stiffness_matrix, &mut right_vector);
         }
         println!("stiffness_matrix = {:.3e}", stiffness_matrix);
@@ -112,19 +150,18 @@ mod tests {
             3.0, 3.0, 0.0, // 7
             4.0, 3.0, 0.0, // 8
         ]);
-        let mut quad9 = Quad9::new(2);
+        let mut quad9 = StructureQuad9::new(2, 2);
         let mut stiffness_matrix = DMatrix::zeros(n_dofs, n_dofs);
         let mut right_vector = DVector::zeros(n_dofs);
         let mat = IsotropicLinearElastic2D::new(3.0e7, 0.25, PlaneStress, 1.0);
-        // let gauss = Gauss::Quad(GaussQuad::new(2));
-        let gauss = GaussQuad9::new(2);
+
         for element_number in 0..connectivity_matrix.nrows() {
             quad9.update(
                 element_number,
                 &connectivity_matrix,
                 &node_coordinate_matrix,
             );
-            quad9.structure_stiffness_calc(&gauss, &mat);
+            quad9.structure_stiffness_calc(&mat);
             quad9.assemble(&mut stiffness_matrix, &mut right_vector);
         }
         println!("stiffness_matrix = {:.3e}", stiffness_matrix);

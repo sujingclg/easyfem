@@ -1,11 +1,8 @@
 use nalgebra::{DMatrix, DVector, MatrixXx3};
 
-use crate::{
-    base::{gauss::GaussQuad4, primitives::GeneralElement},
-    materials::Material,
-};
+use crate::materials::Material;
 
-use super::elements::StructureElement;
+use super::elements::{StructureElement, StructureQuad4};
 
 /// 边界条件, 力边界条件或位移边界条件, T为节点自由度数
 pub enum StructureBoundaryCondition<const T: usize> {
@@ -38,15 +35,16 @@ impl Structure2DSolver {
         &mut self,
         connectivity_matrix: &DMatrix<usize>,    // 单元节点矩阵
         node_coordinate_matrix: &MatrixXx3<f64>, // 节点坐标矩阵
-        element: &mut (impl GeneralElement<4, 2> + StructureElement<3, 4, 2>),
+        // element: &mut (impl GeneralElement<4, 2> + StructureElement<3, 4, 2>),
         // materialsMap: &HashMap<usize, Box<dyn Material<3>>>,
         mat: &impl Material<3>,
     ) {
         // let gauss_quad = Gauss::Quad(GaussQuad::new(2));
-        let gauss = GaussQuad4::new(2);
+        let mut element = StructureQuad4::new(2, 2);
+
         for element_number in 0..connectivity_matrix.nrows() {
             element.update(element_number, connectivity_matrix, node_coordinate_matrix);
-            element.structure_stiffness_calc(&gauss, mat);
+            element.structure_stiffness_calc(mat);
             element.assemble(&mut self.stiffness_matrix, &mut self.force_vector);
         }
     }
@@ -107,10 +105,7 @@ mod tests {
     use easyfem_mesh::{Lagrange2DMesh, Mesh};
     use nalgebra::SMatrix;
 
-    use crate::{
-        base::primitives::Quad4,
-        materials::{IsotropicLinearElastic2D, PlaneCondition::*},
-    };
+    use crate::materials::{IsotropicLinearElastic2D, PlaneCondition::*};
 
     use super::{Structure2DSolver, StructureBoundaryCondition::*};
 
@@ -138,9 +133,8 @@ mod tests {
             })
         }
         let mut solver = Structure2DSolver::new(12);
-        let mut quad4 = Quad4::new(2);
         let mat = IsotropicLinearElastic2D::new(1.0e7, 1.0 / 3.0, PlaneStress, 0.1);
-        solver.stiffness_calculate(mesh.elements(), mesh.nodes(), &mut quad4, &mat);
+        solver.stiffness_calculate(mesh.elements(), mesh.nodes(), &mat);
         solver.apply_boundary_conditions(&bcs);
         solver.solve();
         let answer = SMatrix::<f64, 12, 1>::from_row_slice(&[

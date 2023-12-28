@@ -2,8 +2,8 @@ use nalgebra::{DMatrix, DVector, Matrix4x2, MatrixXx3, SMatrix};
 
 use super::{GeneralElement, PrimitiveBase};
 
-pub type Quad4 = Quad<4>;
-pub type Quad9 = Quad<9>;
+// pub type Quad4 = Quad<4>;
+// pub type Quad9 = Quad<9>;
 
 /// N -> 单元节点个数
 pub struct Quad<const N: usize> {
@@ -53,17 +53,9 @@ impl<const N: usize> PrimitiveBase<N, 2> for Quad<N> {
         &self.connectivity
     }
 
-    // fn connectivity_mut(&mut self) -> &mut [usize; N] {
-    //     &mut self.connectivity
-    // }
-
     fn nodes_coordinates(&self) -> &SMatrix<f64, N, 2> {
         &self.nodes_coordinates
     }
-
-    // fn nodes_coordinates_mut(&mut self) -> &mut SMatrix<f64, N, 2> {
-    //     &mut self.nodes_coordinates
-    // }
 
     fn K_mut(&mut self) -> &mut DMatrix<f64> {
         &mut self.K

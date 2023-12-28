@@ -2,9 +2,9 @@ use nalgebra::{DMatrix, DVector, MatrixXx3, SMatrix};
 
 use super::{GeneralElement, PrimitiveBase};
 
-pub type Edge2 = Edge<2>;
-pub type Edge3 = Edge<3>;
-pub type Edge4 = Edge<4>;
+// pub type Edge2 = Edge<2>;
+// pub type Edge3 = Edge<3>;
+// pub type Edge4 = Edge<4>;
 
 /// N -> 单元节点个数
 pub struct Edge<const N: usize> {
@@ -15,7 +15,7 @@ pub struct Edge<const N: usize> {
     F: DVector<f64>,                       // 右端向量
 }
 
-impl Edge2 {
+impl Edge<2> {
     pub fn new(node_dof: usize) -> Self {
         Edge {
             node_dof,
@@ -27,7 +27,7 @@ impl Edge2 {
     }
 }
 
-impl Edge3 {
+impl Edge<3> {
     pub fn new(node_dof: usize) -> Self {
         Edge {
             node_dof,
@@ -39,7 +39,7 @@ impl Edge3 {
     }
 }
 
-impl Edge4 {
+impl Edge<4> {
     pub fn new(node_dof: usize) -> Self {
         Edge {
             node_dof,
