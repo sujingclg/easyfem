@@ -2,7 +2,7 @@ use nalgebra::DVector;
 
 use crate::base::{
     gauss::{Gauss, GaussEdge2, GaussEdge3, GaussEdge4, GaussResult},
-    primitives::{Edge, Edge2, Edge3, Edge4, GeneralElement, PrimitiveBase},
+    primitives::{Edge, GeneralElement, PrimitiveBase},
 };
 
 use super::DiffusionElement;
@@ -16,7 +16,7 @@ pub type DiffusionEdge2 = DiffusionEdge<2>;
 impl DiffusionEdge2 {
     pub fn new(node_dof: usize, gauss_deg: usize) -> Self {
         DiffusionEdge2 {
-            edge: Edge2::new(node_dof),
+            edge: Edge::<2>::new(node_dof),
             gauss: Box::new(GaussEdge2::new(gauss_deg)),
         }
     }
@@ -26,7 +26,7 @@ pub type DiffusionEdge3 = DiffusionEdge<3>;
 impl DiffusionEdge3 {
     pub fn new(node_dof: usize, gauss_deg: usize) -> Self {
         DiffusionEdge3 {
-            edge: Edge3::new(node_dof),
+            edge: Edge::<3>::new(node_dof),
             gauss: Box::new(GaussEdge3::new(gauss_deg)),
         }
     }
@@ -36,7 +36,7 @@ pub type DiffusionEdge4 = DiffusionEdge<4>;
 impl DiffusionEdge4 {
     pub fn new(node_dof: usize, gauss_deg: usize) -> Self {
         DiffusionEdge4 {
-            edge: Edge4::new(node_dof),
+            edge: Edge::<4>::new(node_dof),
             gauss: Box::new(GaussEdge4::new(gauss_deg)),
         }
     }

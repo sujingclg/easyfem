@@ -5,8 +5,6 @@ mod quad;
 
 use nalgebra::{DMatrix, DVector, MatrixXx3};
 
-/// N -> 单元节点个数
-/// D -> 坐标系维度
 pub trait DiffusionElement {
     fn update(
         &mut self,

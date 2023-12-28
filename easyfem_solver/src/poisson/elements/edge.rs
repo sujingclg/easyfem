@@ -1,29 +1,74 @@
 use crate::base::{
-    gauss::{Gauss, GaussResult},
-    primitives::{Edge, PrimitiveBase},
+    gauss::{Gauss, GaussEdge2, GaussEdge3, GaussResult},
+    primitives::{Edge, GeneralElement, PrimitiveBase},
 };
 
 use super::PoissonElement;
 
-impl<const N: usize> PoissonElement<N, 1> for Edge<N> {
-    fn poisson_stiffness_calc(&mut self, gauss: &impl Gauss<N, 1>, f: f64) {
+pub struct PoissonEdge<const N: usize> {
+    edge: Edge<N>,
+    gauss: Box<dyn Gauss<N, 1>>,
+}
+
+pub type PoissonEdge2 = PoissonEdge<2>;
+impl PoissonEdge2 {
+    pub fn new(node_dof: usize, gauss_deg: usize) -> Self {
+        PoissonEdge2 {
+            edge: Edge::<2>::new(node_dof),
+            gauss: Box::new(GaussEdge2::new(gauss_deg)),
+        }
+    }
+}
+
+pub type PoissonEdge3 = PoissonEdge<3>;
+impl PoissonEdge3 {
+    pub fn new(node_dof: usize, gauss_deg: usize) -> Self {
+        PoissonEdge3 {
+            edge: Edge::<3>::new(node_dof),
+            gauss: Box::new(GaussEdge3::new(gauss_deg)),
+        }
+    }
+}
+
+impl<const N: usize> PoissonElement for PoissonEdge<N> {
+    fn update(
+        &mut self,
+        element_number: usize, // 单元编号, 即单元的全局索引
+        connectivity_matrix: &nalgebra::DMatrix<usize>, // 全局单元-节点编号矩阵
+        coordinate_matrix: &nalgebra::MatrixXx3<f64>, // 全局节点-坐标矩阵
+    ) {
+        self.edge
+            .update(element_number, connectivity_matrix, coordinate_matrix);
+    }
+
+    fn poisson_stiffness_calc(&mut self, f: f64) {
         // let node_dof = self.node_dof();
-        let node_count = self.node_count();
-        for (w, gauss_point) in gauss.gauss_vector() {
+        let node_count = self.edge.node_count();
+        for (w, gauss_point) in self.gauss.gauss_vector() {
             let GaussResult {
                 shp_val,
                 shp_grad,
                 det_j,
-            } = gauss.shape_func_calc(self.nodes_coordinates(), gauss_point);
+            } = self
+                .gauss
+                .shape_func_calc(self.edge.nodes_coordinates(), gauss_point);
             let JxW = det_j * w;
             // TODO: 目前此方程没有考虑节点自由度
             for i in 0..node_count {
-                self.F_mut()[i] += f * shp_val[i] * JxW;
+                self.edge.F_mut()[i] += f * shp_val[i] * JxW;
                 for j in 0..node_count {
-                    self.K_mut()[(i, j)] += shp_grad[j] * shp_grad[i] * JxW;
+                    self.edge.K_mut()[(i, j)] += shp_grad[j] * shp_grad[i] * JxW;
                 }
             }
         }
+    }
+
+    fn assemble(
+        &mut self,
+        stiffness_matrix: &mut nalgebra::DMatrix<f64>,
+        right_vector: &mut nalgebra::DVector<f64>,
+    ) {
+        self.edge.assemble(stiffness_matrix, right_vector);
     }
 }
 
@@ -32,27 +77,21 @@ mod tests {
     use easyfem_mesh::{Lagrange1DMesh, Mesh};
     use nalgebra::{DMatrix, DVector, SMatrix};
 
-    use crate::{
-        base::{
-            gauss::GaussEdge2,
-            primitives::{Edge2, GeneralElement},
-        },
-        poisson::elements::PoissonElement,
-    };
+    use crate::poisson::elements::PoissonElement;
+
+    use super::*;
 
     #[test]
     fn poisson_edge2_test() {
         let mesh = Lagrange1DMesh::new(0.0, 1.0, 10, "edge2");
-        let mut edge2 = Edge2::new(1);
+        let mut edge2 = PoissonEdge2::new(1, 2);
         let n_dofs = mesh.node_count();
         let mut stiffness_matrix = DMatrix::zeros(n_dofs, n_dofs);
         let mut right_vector = DVector::zeros(n_dofs);
-        // let gauss = &Gauss::Edge(GaussEdge::new(2));
-        let gauss = GaussEdge2::new(2);
 
         for element_number in 0..mesh.element_count() {
             edge2.update(element_number, mesh.elements(), mesh.nodes());
-            edge2.poisson_stiffness_calc(&gauss, 200.0);
+            edge2.poisson_stiffness_calc(200.0);
             edge2.assemble(&mut stiffness_matrix, &mut right_vector);
         }
 
